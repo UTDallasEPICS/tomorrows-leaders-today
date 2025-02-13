@@ -1,6 +1,4 @@
-/*
- * Name: msc210003
- * NetID: Madhav Chauhan
+
  * File: README.md
  */
 
