@@ -1,4 +1,4 @@
-import { grantScraper } from '../../library/grantScraper';
+import { grantScraper } from './src/library/grantScraper.js';
 
 export default async function handler(req, res) {
     const { url } = req.query; // Expecting a URL parameter
