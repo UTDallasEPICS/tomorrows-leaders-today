@@ -1,32 +1,32 @@
 -- Table for Grant Categories
 CREATE TABLE GrantCategories (
-    category_id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
+    category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
     description TEXT,
-    definition_link VARCHAR(255)
+    definition_link TEXT
 );
 
 -- Main Grants table
 CREATE TABLE Grants (
-    grant_id INT PRIMARY KEY AUTO_INCREMENT,
-    title VARCHAR(255) NOT NULL,
+    grant_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
     description TEXT,
-    category_id INT,
-    status VARCHAR(50),
-    website VARCHAR(255),
+    category_id INTEGER,
+    status TEXT,
+    website TEXT,
     award_details TEXT,
-    interview_required BOOLEAN DEFAULT FALSE,
-    rolling_basis BOOLEAN DEFAULT FALSE,
+    interview_required INTEGER DEFAULT 0,
+    rolling_basis INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES GrantCategories(category_id) ON DELETE SET NULL
 );
 
 -- Table for tracking timelines/events of the grant process
 CREATE TABLE GrantTimelines (
-    timeline_id INT PRIMARY KEY AUTO_INCREMENT,
-    grant_id INT NOT NULL,
-    event_type VARCHAR(100) NOT NULL,
+    timeline_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    grant_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
     event_date DATE NOT NULL,
     details TEXT,
     FOREIGN KEY (grant_id) REFERENCES Grants(grant_id) ON DELETE CASCADE
@@ -34,8 +34,8 @@ CREATE TABLE GrantTimelines (
 
 -- Table for application requirements and guidelines
 CREATE TABLE ApplicationRequirements (
-    requirement_id INT PRIMARY KEY AUTO_INCREMENT,
-    grant_id INT NOT NULL,
+    requirement_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    grant_id INTEGER NOT NULL,
     eligibility TEXT,
     materials TEXT,
     instructions TEXT,
@@ -45,18 +45,18 @@ CREATE TABLE ApplicationRequirements (
 
 -- Table for contact information related to the grant
 CREATE TABLE Contacts (
-    contact_id INT PRIMARY KEY AUTO_INCREMENT,
-    grant_id INT NOT NULL,
-    contact_type VARCHAR(50),
-    contact_info VARCHAR(255),
-    availability VARCHAR(100),
+    contact_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    grant_id INTEGER NOT NULL,
+    contact_type TEXT,
+    contact_info TEXT,
+    availability TEXT,
     FOREIGN KEY (grant_id) REFERENCES Grants(grant_id) ON DELETE CASCADE
 );
 
 -- Table for specific grant stipulations or conditions
 CREATE TABLE GrantStipulations (
-    stipulation_id INT PRIMARY KEY AUTO_INCREMENT,
-    grant_id INT NOT NULL,
+    stipulation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    grant_id INTEGER NOT NULL,
     condition TEXT,
     notes TEXT,
     FOREIGN KEY (grant_id) REFERENCES Grants(grant_id) ON DELETE CASCADE
@@ -64,22 +64,22 @@ CREATE TABLE GrantStipulations (
 
 -- Table for Funding Opportunities
 CREATE TABLE FundingOpportunities (
-    funding_id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(255) NOT NULL,
+    funding_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
     description TEXT,
-    source VARCHAR(255),  -- Organization or entity providing the funding
-    total_funding_amount DECIMAL(15,2),  -- Total funding available
-    max_award_amount DECIMAL(15,2),  -- Maximum award per recipient
+    source TEXT,
+    total_funding_amount REAL,
+    max_award_amount REAL,
     application_deadline DATE,
-    website VARCHAR(255),
+    website TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Relationship table linking Grants to Funding Opportunities
 CREATE TABLE GrantFunding (
-    grant_id INT NOT NULL,
-    funding_id INT NOT NULL,
+    grant_id INTEGER NOT NULL,
+    funding_id INTEGER NOT NULL,
     FOREIGN KEY (grant_id) REFERENCES Grants(grant_id) ON DELETE CASCADE,
     FOREIGN KEY (funding_id) REFERENCES FundingOpportunities(funding_id) ON DELETE CASCADE,
     PRIMARY KEY (grant_id, funding_id)
