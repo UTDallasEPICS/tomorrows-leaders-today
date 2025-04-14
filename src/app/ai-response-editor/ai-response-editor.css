@@ -1,0 +1,167 @@
+@import url('https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+
+/* === Wrapper === */
+/* Main container wrapping the entire editor UI */
+.editor-wrapper {
+  background-color: #e3e3e3;
+  padding: 60px 20px;
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0; /* Optional: remove border radius if you want it flush with screen edges */
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* === Two-Column Layout === */
+/* Flex container for the two-column layout of editor and sections */
+.editor-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* === Shared Heading Styles === */
+/* Common heading style for editor and sections */
+.editor-heading {
+  margin-left: 65px; 
+  font-family: 'Zilla Slab', serif;
+  font-size: 40px;
+  font-weight: 550;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+/* Section heading style with slight margin adjustment */
+.section-heading {
+  font-family: 'Zilla Slab', serif;
+  font-size: 40px;
+  margin-left:10px;
+  font-weight: 510;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+/* === Left: Editor Section === */
+/* Container for the main text editor area */
+.editor-section {
+  flex: 1 1 55%;
+  margin-left: 50px; 
+  background-color: #F7F4F4;
+  padding: 0px;
+  border-radius: 20px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Space between child elements */
+}
+
+/* Textarea styling for user input */
+.editor-textarea {
+  width: 100%;
+  min-height: 620px;
+  padding: 50px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  background-color: #F7F4F4;
+  resize: vertical; /* Allow vertical resizing only */
+  font-family: inherit;
+}
+
+/* Submit button styling */
+.submit-button {
+  align-self: flex-end;
+  width: 180px;
+  height: 45px;
+  background-color: #936fb1;
+  color: #fff;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'Montserrat', sans-serif;
+  transition: background-color 0.25s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  margin-top: 30px; /* Space above button */
+  margin-left: 40px; /* Space to the left */
+}
+
+/* Hover effect for submit button */
+.submit-button:hover {
+  background-color: #b39200;
+}
+
+/* === Right: Sections Column === */
+/* Container for the right column holding various sections */
+.sections-column {
+  flex: 1 1 20%;
+  display: flex;
+  flex-direction: column;
+  margin-right: 50px; 
+}
+
+/* Panel styling inside the sections column */
+.sections-panel {
+  flex: 1;
+  background-color: #F7F4F4;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Editor column container for layout consistency */
+.editor-column {
+  flex: 1 1 55%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* === Section Item with Progress === */
+/* Button style for each section item with progress indicator */
+.section-button {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 56px;
+  padding: 10px ;
+  border: 2px solid #936fb1;
+  border-radius: 10px; /* Rounded corners */
+}
+
+/* Hover effect for section buttons */
+.section-button:hover {
+  border: 2px solid #b39200;
+}
+
+/* Container for section text below progress circle */
+.section-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8px; /* Spacing below the progress circle */
+}
+
+/* Label text style for section */
+.section-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Subtext style for additional section info */
+.section-subtext {
+  font-size: 16px;
+  color: #777;
+  margin-top: 2px;
+  text-align: center;
+}
+
+/* Size for the progress circle element */
+.section-progress {
+  width: 60px;
+  height: 60px;
+}
