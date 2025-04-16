@@ -9,5 +9,9 @@ export default function Home() {
     router.push("/ai-response-editor");
   }, [router]);
 
+  useEffect(() => {
+    router.push("/Login-page");
+  }, [router]);
+
   return null; // No unnecessary UI, just redirects
 }

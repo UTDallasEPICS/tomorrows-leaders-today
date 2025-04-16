@@ -3,14 +3,26 @@
 
 /* === Wrapper === */
 /* Main container wrapping the entire editor UI */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
 .editor-wrapper {
-  background-color: #e3e3e3;
+  position: fixed;
   padding: 60px 20px;
-  width: 100vw;
+  top: 0;
+  left: 0;
   height: 100vh;
-  border-radius: 0; /* Optional: remove border radius if you want it flush with screen edges */
+  width: 100vw;
+  overflow: auto;
+  background-color: #e3e3e3;
   font-family: 'Montserrat', sans-serif;
 }
+
 
 /* === Two-Column Layout === */
 /* Flex container for the two-column layout of editor and sections */
@@ -57,7 +69,7 @@
   gap: 20px; /* Space between child elements */
 }
 
-/* Textarea styling for user input */
+/* Textarea styling for user input */ 
 .editor-textarea {
   width: 100%;
   min-height: 620px;
@@ -66,9 +78,48 @@
   border: 1px solid #ccc;
   border-radius: 20px;
   background-color: #F7F4F4;
-  resize: vertical; /* Allow vertical resizing only */
+  resize: vertical;
   font-family: inherit;
+
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #936fb1 #f0f0f0;
 }
+
+/* Chrome, Safari, Edge */
+.editor-textarea::-webkit-scrollbar {
+  width: 8px;
+  border-radius: 20px;
+}
+
+.editor-textarea::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 20px;
+
+}
+
+.editor-textarea::-webkit-scrollbar-thumb {
+  background-color: #936fb1;
+  border-radius: 20px;
+  border: 20px solid transparent;
+  background-clip: content-box;
+}
+
+.clear-button {
+  margin-left: 12px;
+  background-color: #333;
+  color: #eee;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.clear-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 
 /* Submit button styling */
 .submit-button {
@@ -85,13 +136,33 @@
   transition: background-color 0.25s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   margin-top: 30px; /* Space above button */
-  margin-left: 40px; /* Space to the left */
+  margin-left: 650px; /* Space to the left */
 }
 
 /* Hover effect for submit button */
 .submit-button:hover {
   background-color: #b39200;
 }
+
+.overlay-spinner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  z-index: 10;
+}
+
+.dimmed {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 
 /* === Right: Sections Column === */
 /* Container for the right column holding various sections */
@@ -164,4 +235,19 @@
 .section-progress {
   width: 60px;
   height: 60px;
+}
+
+@media (max-width: 768px) {
+  .editor-flex {
+    flex-direction: column;
+  }
+  .editor-section, .sections-column {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .editor-heading {
+    margin-left: 15px; 
+  }
 }

@@ -1,18 +1,11 @@
-// ai-response-editor.jsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import "./ai-response-editor.css";
+import { toast } from "react-hot-toast";
 
-/* 
-  SectionButton component represents a clickable section item with a circular progress bar.
-  Props:
-    - title: The main label of the section
-    - subtitle: Optional subtext describing the section status
-    - percentage: Progress percentage to display in the circular progress bar
-*/
 const SectionButton = ({ title, subtitle, percentage }) => (
   <div className="section-button">
     <div className="section-progress">
@@ -27,7 +20,6 @@ const SectionButton = ({ title, subtitle, percentage }) => (
         })}
       />
     </div>
-
     <div className="section-text">
       <div className="section-label">{title}</div>
       {subtitle && <div className="section-subtext">{subtitle}</div>}
@@ -35,58 +27,117 @@ const SectionButton = ({ title, subtitle, percentage }) => (
   </div>
 );
 
-/* 
-  AIResponseEditor is the main component rendering the AI response editor UI.
-  It manages the response text state and handles user input and submission.
-*/
 export default function AIResponseEditor() {
-  // State to hold the current AI response text
   const [response, setResponse] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sections, setSections] = useState([]);
+  const textRef = useRef(null);
 
-  // Handler for textarea input changes, updates the response state
+  useEffect(() => {
+    const loadSections = async () => {
+      try {
+        const res = await fetch("/api/get-sections");
+        if (!res.ok) throw new Error("API failed");
+        const data = await res.json();
+        setSections(data);
+      } catch {
+        setSections([
+          { title: "Profile Completion", percentage: 0, subtitle: "Incomplete" },
+          { title: "Contact Information", percentage: 0, subtitle: "Incomplete" },
+          { title: "Essay Prompts", percentage: 0, subtitle: "Incomplete" },
+          { title: "Grant Preferences", percentage: 0, subtitle: "Incomplete" },
+        ]);
+      }
+    };
+
+    loadSections();
+    if (textRef.current) textRef.current.focus();
+  }, []);
+
   const handleChange = (e) => setResponse(e.target.value);
 
-  // Handler for submit button click, currently logs the response to console
-  const handleSubmit = () => console.log("Submitted response:", response);
+  const handleKeyDown = (e) => {
+    if (e.ctrlKey && e.key === "Enter") {
+      handleSubmit();
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!response.trim()) {
+      toast.error("Response cannot be empty.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await new Promise((res) => setTimeout(res, 1500));
+      toast.success("Response submitted successfully!");
+      setResponse("");
+    } catch (error) {
+      toast.error("Failed to submit. Try again.");
+      console.error("Submission error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClear = () => {
+    setResponse("");
+    textRef.current?.focus();
+  };
 
   return (
     <div className="editor-wrapper">
-      <div className="editor-flex">
+      {loading && <div className="overlay-spinner">Submitting...</div>}
 
-        {/* LEFT: Editor column with heading outside the box */} 
+      <div className={`editor-flex ${loading ? "dimmed" : ""}`}>
         <div className="editor-column">
-          {/* Heading for the editor section */} 
           <h1 className="editor-heading">Edit AI Response</h1>
-          
-          {/* Text editor section containing the textarea */} 
+
           <div className="editor-section">
             <textarea
+              ref={textRef}
               className="editor-textarea"
               value={response}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               placeholder="Type your AI response here"
+              disabled={loading}
             />
           </div>
 
-          {/* Submit button to trigger response submission */} 
-          <button className="submit-button" onClick={handleSubmit}>
-            SUBMIT
-          </button>
-        </div>
+          <div className="editor-buttons">
+            <button
+              className="submit-button"
+              onClick={handleSubmit}
+              disabled={loading || !response.trim()}
+            >
+              {loading ? "Submitting..." : "SUBMIT"}
+            </button>
 
-        {/* RIGHT: Sections column displaying progress on various sections */} 
-        <div className="sections-column">
-          {/* Heading for the sections panel */} 
-          <h1 className="section-heading">Sections</h1>
-          <div className="sections-panel">
-            {/* Section buttons with progress indicators */} 
-            <SectionButton percentage={80} title="Profile Completion" subtitle="Incomplete" />
-            <SectionButton percentage={40} title="Contact Information" subtitle="Incomplete" />
-            <SectionButton percentage={45} title="Essay Prompts" subtitle="Incomplete" />
-            <SectionButton percentage={90} title="Grant Preferences" subtitle="Incomplete" />
+            <button
+              className="clear-button"
+              onClick={handleClear}
+              disabled={loading || !response}
+            >
+              CLEAR
+            </button>
           </div>
         </div>
 
+        <div className="sections-column">
+          <h1 className="section-heading">Sections</h1>
+          <div className="sections-panel">
+            {sections.map((s) => (
+              <SectionButton
+                key={`${s.title}-${s.subtitle}`}
+                percentage={s.percentage}
+                title={s.title}
+                subtitle={s.subtitle}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

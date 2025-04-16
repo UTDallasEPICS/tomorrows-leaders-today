@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+
+/* === Wrapper === */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.login-wrapper {
+  position: fixed;
+    padding: 60px 20px;
+  padding-top:200px;
+
+  padding-left: 450px;
+  
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
+  overflow: auto;
+  color:#EDEDED;
+  background-color: #1E1E1E;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* === Login container === */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  color:#1E1E1E;
+ 
+  justify-content: center;
+  border-radius: 30px;
+  height: 528px;
+  width: 725px;
+  background-color: #EDEDED;
+}
+
+.login-header {
+  font-family: 'Zilla Slab', serif;
+  font-size: 45px;
+  font-weight: 700;
+  margin-left:100px; /* adjust left spacing */
+  margin-bottom: 2px;
+  text-align: left;
+}
+
+.login-button {
+    display: flex;               /* align icon and text horizontally */
+    align-items: center;         /* vertical alignment */
+    justify-content: center;
+    gap: 20px;                   /* spacing between icon and text */
+    background-color: #B89A49;
+    color: #1E1E1E;
+    border: none;
+    width: 525px;
+    height: 82px;
+    padding: 10px 20px;
+    font-size: 30px;
+    font-weight: 400;
+    cursor: pointer;
+    border-radius: 20px;
+    transition: background-color 0.3s ease;
+  }
+
+.login-button:hover {
+  background-color: #A78B3D;
+}
+
+.google-icon {
+    width: 46.894195556640625px;
+    height: 46.894195556640625px;
+  }
+
+  .google-icon-wrapper {
+    background-color: #EDEDED;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+
+.login-subtitle {
+    font-size: 25px;
+    font-weight: 500;
+    color: #1E1E1E;
+
+    margin-left: 100px; /* adjust left spacing */
+    margin-top: 4px;
+    margin-bottom: 130px;
+    text-align: left;
+    font-family: 'Montserrat', sans-serif;
+  }
+  
+  .grant-header {
+    font-family: 'Trajan Pro', serif;
+    font-size: 45px;
+    font-weight: 500;
+    color: #ffffff;
+    margin: 0 0 20px 60px; /* adjust left spacing */
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+    .grant-icon {
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;         /* makes it a circle */
+        object-fit: cover;          /* crop image to fill */
+        overflow: hidden;
+        margin-left: 55px;
+    }
+  
+  .login-text-block {
+    width: 100%;
+    text-align: left;
+  }
+  
