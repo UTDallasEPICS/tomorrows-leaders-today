@@ -1,4 +1,4 @@
-import axois from 'axios';
+import axios from 'axios';
 import cheerio from 'cheerio';
 import { grantScraper } from '../../library/grantScraper';
 
