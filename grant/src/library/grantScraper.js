@@ -1,7 +1,8 @@
 // npm install axios cheerio
+// to activate the webscraper type in 'npm run scrape' to the terminal
 
+import { load } from 'cheerio';
 import axios from 'axios';
-import cheerio from 'cheerio';
 import { sourceMapsEnabled } from 'process';
 
 /** Scrapes given URLs for grant data
@@ -10,35 +11,20 @@ import { sourceMapsEnabled } from 'process';
 */
 
 export async function grantScraper(url) {
-    try {
-        const { data: html } = await axios.get(url);
-        const $ = cheerio.load(html);
-        const grants = [];
+    const { data: html } = await axios.get(url);
+    const $ = load(html);
+    const grants = [];
 
-        // Iterate over each grant item
-        $('.grant-item').each((i, element) => {
-            const grantName = $(element).find('.grant-name').text().trim();
-            const launchDate = $(element).find('.launch-date').text().trim();
-            const deadline = $(element).find('.deadline').text().trim();
-            const amount = $(element).find('.amount').text().trim();
-            const link = $(element).find('.link').attr('href');
-            const description = $(element).find('.description').text().trim();
-
-            // Push grant data to the grants array
-            grants.push({
-                grantName,
-                launchDate,
-                deadline,
-                amount,
-                link,
-                description
-            });
+    $('.grant-item').each((i, el) => {
+        grants.push({
+            grantName: $(el).find('.grant-name').text().trim(),
+            launchDate: $(el).find('.launch-date').text().trim(),
+            deadline: $(el).find('deadline').text().trim(),
+            amount: $(el).find('.amount').text().trim(),
+            link: $(el).find('.link').attr('href'),
+            description: $(el).find('.description').text().trim(),
         });
+    });
 
-        return grants;
-    }
-    catch (error) {
-        console.error('Error scraping ${url}:', error);
-        throw error;
-    }
+    return grants;
 }
