@@ -10,6 +10,10 @@ export default function Home() {
   }, [router]);
 
   useEffect(() => {
+    router.push("/Test-page");
+  }, [router]);
+
+  useEffect(() => {
     router.push("/Login-page");
   }, [router]);
 

@@ -1,31 +1,11 @@
 "use client";
 
+
+import Navbar from "../components/Navbar";
 import { useState, useEffect, useRef } from "react";
-import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
-import "react-circular-progressbar/dist/styles.css";
+import DataBox from "../components/DataBox";
 import "./ai-response-editor.css";
 import { toast } from "react-hot-toast";
-
-const SectionButton = ({ title, subtitle, percentage }) => (
-  <div className="section-button">
-    <div className="section-progress">
-      <CircularProgressbar
-        value={percentage}
-        text={`${percentage}`}
-        styles={buildStyles({
-          textSize: "24px",
-          pathColor: "#936fb1",
-          textColor: "#333",
-          trailColor: "#d6d6d6",
-        })}
-      />
-    </div>
-    <div className="section-text">
-      <div className="section-label">{title}</div>
-      {subtitle && <div className="section-subtext">{subtitle}</div>}
-    </div>
-  </div>
-);
 
 export default function AIResponseEditor() {
   const [response, setResponse] = useState("");
@@ -87,58 +67,67 @@ export default function AIResponseEditor() {
   };
 
   return (
-    <div className="editor-wrapper">
-      {loading && <div className="overlay-spinner">Submitting...</div>}
+    <>
+      
+  
+      <div className="editor-wrapper">
+      <Navbar />
 
-      <div className={`editor-flex ${loading ? "dimmed" : ""}`}>
-        <div className="editor-column">
-          <h1 className="editor-heading">Edit AI Response</h1>
-
-          <div className="editor-section">
-            <textarea
-              ref={textRef}
-              className="editor-textarea"
-              value={response}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your AI response here"
-              disabled={loading}
-            />
-          </div>
-
-          <div className="editor-buttons">
-            <button
-              className="submit-button"
-              onClick={handleSubmit}
-              disabled={loading || !response.trim()}
-            >
-              {loading ? "Submitting..." : "SUBMIT"}
-            </button>
-
-            <button
-              className="clear-button"
-              onClick={handleClear}
-              disabled={loading || !response}
-            >
-              CLEAR
-            </button>
-          </div>
-        </div>
-
-        <div className="sections-column">
-          <h1 className="section-heading">Sections</h1>
-          <div className="sections-panel">
-            {sections.map((s) => (
-              <SectionButton
-                key={`${s.title}-${s.subtitle}`}
-                percentage={s.percentage}
-                title={s.title}
-                subtitle={s.subtitle}
+        {loading && <div className="overlay-spinner">Submitting...</div>}
+  
+        <div className={`editor-flex ${loading ? "dimmed" : ""}`}>
+          {/* Left column */}
+          <div className="editor-column">
+            <h1 className="editor-heading">Edit AI Response</h1>
+  
+            <div className="editor-section">
+              <textarea
+                ref={textRef}
+                className="editor-textarea"
+                value={response}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Type your AI response here"
+                disabled={loading}
               />
-            ))}
+            </div>
+  
+            <div className="editor-buttons">
+              <button
+                className="submit-button"
+                onClick={handleSubmit}
+                disabled={loading || !response.trim()}
+              >
+                {loading ? "Submitting..." : "SUBMIT"}
+              </button>
+  
+              <button
+                className="clear-button"
+                onClick={handleClear}
+                disabled={loading || !response}
+              >
+                CLEAR
+              </button>
+            </div>
+          </div>
+  
+          {/* Right column */}
+          <div className="sections-column">
+            <h1 className="section-heading">Sections</h1>
+            <div className="sections-panel">
+              {sections.map((s) => (
+                <DataBox
+                  key={`${s.title}-${s.subtitle}`}
+                  percentage={s.percentage}
+                  title={s.title}
+                  subtitle={s.subtitle}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
+  
 }
