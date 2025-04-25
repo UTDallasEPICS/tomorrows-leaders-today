@@ -41,10 +41,11 @@ async function run() {
     console.log(`Running scrape with keyword: "${keyword}"`);
     const grants = await grantScraper(keyword, 5);
     console.log(`Found ${grants.length} opportunities:`);
-    
+
     try {
     grants.forEach((g, i) => {
-        console.log(`${i + 1}. [${g.number}] ${g.title}`);
+        console.log(`${i + 1}. ID: [${g.id}]`);
+        console.log(`   Title: ${g.title}`);
         console.log(`   Agency: ${g.agency}`);
         console.log(`   Status: ${g.status}`);
         console.log(`   Posted: ${g.postedDate}`);

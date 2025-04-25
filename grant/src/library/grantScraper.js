@@ -6,9 +6,10 @@ import axios from 'axios';
  * Fetches grants from grants.gov's JSON API instead of HTML parsing due to technical issues.
  * @param {string} query - The search keyword(s), e.g. "education".
  * @param {number} rows - How many rows to return (max 5000).
+ * @returns {Promise<Array>} - Array of grant objects with summary info and detail URL.
  */
 
-export async function grantScraper(query, rows = 5000) {
+export async function grantScraper(query, rows = 20) {
     const endpoint = 'https://apply07.grants.gov/grantsws/rest/opportunities/search';
 
     // Capture exact body shape from your browser's DevTools that matches request payloads.
@@ -33,33 +34,20 @@ export async function grantScraper(query, rows = 5000) {
         },
     });
 
-    // Debugging
-    console.log("Grant Scraper Response's top-level keys:", Object.keys(data));
-    console.log("Sample payload:", JSON.stringify(data, null, 2).slice(0, 500), "...");
-
+    const list = data.oppHits || [];
     console.log("Total matching grants:", data.hitCount);
     console.log("Number of grants in this page:", data.oppHits.length);
 
-    // List the first 5 titles
-    data.oppHits.slice(0,5).forEach((o,i) => {
-        console.log(`${i+1}. [${o.number}] ${o.title}`);
-      });
-
-    // Depending on base URL, array might live under data.oppoortunities or data._embedded.opportunities or any variant that's similar.
-    const list =
-    data.oppHits ||
-    data._embedded?.oppHits ||
-    data._embedded?.searchResultList?.oppHits ||
-    [];
-
-  return list.map((opp) => ({
-    number:     opp.number,
-    title:      opp.title,
-    agency:     opp.agency,
-    status:     opp.oppStatus,
-    postedDate: opp.openDate,
-    closeDate:  opp.closeDate,
-    url:        opp.link,
-    synopsis:   opp.synopsis,
-  }));
+    // Map each grant to include the detail page URL
+    return list.map(opp => ({
+        id: opp.id,
+        number: opp.number,
+        title: opp.title,
+        agency: opp.agency,
+        status: opp.oppStatus,
+        postedDate: opp.openDate,
+        closeDate: opp.closeDate,
+        synopsis: opp.synopsis,
+        url: 'https://grants.gov/search-results-detail/' + opp.id,
+    }));
 }
