@@ -39,7 +39,7 @@ Not currently needed but could be useful if attempting to search for websites th
 async function run() {
     const keyword = '';
     console.log(`Running scrape with keyword: "${keyword}"`);
-    const grants = await grantScraper(keyword, 5);
+    const grants = await grantScraper(keyword, 10);
     console.log(`Found ${grants.length} opportunities:`);
 
     try {
