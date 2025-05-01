@@ -1,28 +1,32 @@
--- Table for Grant Categories
-CREATE TABLE GrantCategories (
-    category_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT,
-    definition_link TEXT
-);
+-- Step 1: Rename the original Grants table
+ALTER TABLE Grants RENAME TO Grants_old;
 
--- Main Grants table
+-- Step 2: Recreate the new Grants table with updated columns
 CREATE TABLE Grants (
     grant_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    external_id INTEGER UNIQUE,
     title TEXT NOT NULL,
     description TEXT,
-    category_id INTEGER,
     status TEXT,
     website TEXT,
-    award_details TEXT,
-    interview_required INTEGER DEFAULT 0,
-    rolling_basis INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES GrantCategories(category_id) ON DELETE SET NULL
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table for tracking timelines/events of the grant process
+-- Step 3: Copy relevant data (excluding dropped columns)
+INSERT INTO Grants (grant_id, title, description, status, website, created_at, updated_at)
+SELECT grant_id, title, description, status, website, created_at, updated_at
+FROM Grants_old;
+
+-- Step 4: Drop the old Grants table
+DROP TABLE Grants_old;
+
+-- Step 5: Drop and recreate dependent tables
+DROP TABLE IF EXISTS GrantFunding;
+DROP TABLE IF EXISTS FundingOpportunities;
+DROP TABLE IF EXISTS GrantTimelines;
+
+-- Step 6: Recreate GrantTimelines
 CREATE TABLE GrantTimelines (
     timeline_id INTEGER PRIMARY KEY AUTOINCREMENT,
     grant_id INTEGER NOT NULL,
@@ -32,42 +36,12 @@ CREATE TABLE GrantTimelines (
     FOREIGN KEY (grant_id) REFERENCES Grants(grant_id) ON DELETE CASCADE
 );
 
--- Table for application requirements and guidelines
-CREATE TABLE ApplicationRequirements (
-    requirement_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    grant_id INTEGER NOT NULL,
-    eligibility TEXT,
-    materials TEXT,
-    instructions TEXT,
-    notes TEXT,
-    FOREIGN KEY (grant_id) REFERENCES Grants(grant_id) ON DELETE CASCADE
-);
-
--- Table for contact information related to the grant
-CREATE TABLE Contacts (
-    contact_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    grant_id INTEGER NOT NULL,
-    contact_type TEXT,
-    contact_info TEXT,
-    availability TEXT,
-    FOREIGN KEY (grant_id) REFERENCES Grants(grant_id) ON DELETE CASCADE
-);
-
--- Table for specific grant stipulations or conditions
-CREATE TABLE GrantStipulations (
-    stipulation_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    grant_id INTEGER NOT NULL,
-    condition TEXT,
-    notes TEXT,
-    FOREIGN KEY (grant_id) REFERENCES Grants(grant_id) ON DELETE CASCADE
-);
-
--- Table for Funding Opportunities
+-- Step 7: Recreate FundingOpportunities
 CREATE TABLE FundingOpportunities (
     funding_id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    description TEXT,
     source TEXT,
+    description TEXT,
     total_funding_amount REAL,
     max_award_amount REAL,
     application_deadline DATE,
@@ -76,7 +50,7 @@ CREATE TABLE FundingOpportunities (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Relationship table linking Grants to Funding Opportunities
+-- Step 8: Recreate GrantFunding join table
 CREATE TABLE GrantFunding (
     grant_id INTEGER NOT NULL,
     funding_id INTEGER NOT NULL,
