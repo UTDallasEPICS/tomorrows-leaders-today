@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -95,6 +96,19 @@ export default function Home() {
           />
           Go to nextjs.org →
         </a>
+        <Link
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="/profile"
+        >
+          <Image
+            aria-hidden
+            src="/globe.svg"
+            alt="Profile icon"
+            width={16}
+            height={16}
+          />
+          Go to Profile →
+        </Link>
       </footer>
     </div>
   );
