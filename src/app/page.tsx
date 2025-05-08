@@ -1,28 +1,8 @@
 import React from 'react';
-import Navbar from "./Navbar";
+import Navbar from './Navbar';
+import { PrismaClient } from '@prisma/client';
 
-
-
-interface Grant {
-  title: string;
-  amount: string;
-  openDate: string;
-  dueDate: string;
-  categories: string[][];
-}
-
-const grants: Grant[] = Array(7).fill({
-  title: 'Lorem ipsum odor amet, consectetuer adipiscing elit.',
-  amount: '$ 1,000',
-  openDate: '01/01/25',
-  dueDate: '01/01/25',
-  categories: [
-    ['#EF4444', 'TAG'],
-    ['#22C55E', 'TAG'],
-    ['#3B82F6', 'TAG'],
-    ['#FACC15', 'TAG'],
-  ],
-});
+const prisma = new PrismaClient();
 
 const Tag = ({ color, label }: { color: string; label: string }) => (
   <span
@@ -33,11 +13,31 @@ const Tag = ({ color, label }: { color: string; label: string }) => (
   </span>
 );
 
-export default function GrantTracker() {
+export default async function GrantTracker() {
+  const grants = await prisma.grants.findMany({
+    include: {
+      GrantTimelines: true,
+    },
+  });
+
+  const formattedGrants = grants.map((grant) => {
+    const open = grant.GrantTimelines.find(e => e.event_type === 'posted');
+    const close = grant.GrantTimelines.find(e => e.event_type === 'closes');
+
+    return {
+      title: grant.title,
+      amount: '$ TBD',
+      openDate: open?.event_date?.toISOString().split('T')[0] ?? 'N/A',
+      dueDate: close?.event_date?.toISOString().split('T')[0] ?? 'N/A',
+      categories: [['#6B7280', grant.status ?? 'Unknown']],
+    };
+  });
+
   return (
     <div className="p-6 bg-[#f5f5f5] min-h-screen font-sans text-black">
       {/* Header */}
-        <Navbar />
+      <Navbar />
+
       {/* Main */}
       <section className="mt-10">
         <h1 className="text-3xl font-bold mb-6">Grant Tracker</h1>
@@ -62,7 +62,7 @@ export default function GrantTracker() {
               </tr>
             </thead>
             <tbody>
-              {grants.map((grant, idx) => (
+              {formattedGrants.map((grant, idx) => (
                 <tr key={idx} className="border-t hover:bg-gray-50">
                   <td className="px-6 py-4 text-gray-800">{grant.title}</td>
                   <td className="px-6 py-4 font-medium">{grant.amount}</td>

@@ -1,25 +1,7 @@
+import { PrismaClient } from '@prisma/client';
 import React from 'react';
 
-interface Grant {
-  title: string;
-  amount: string;
-  openDate: string;
-  dueDate: string;
-  categories: string[][];
-}
-
-const grants: Grant[] = Array(7).fill({
-  title: 'Lorem ipsum odor amet, consectetuer adipiscing elit.',
-  amount: '$ 1,000',
-  openDate: '01/01/25',
-  dueDate: '01/01/25',
-  categories: [
-    ['red', 'TAG'],
-    ['green', 'TAG'],
-    ['blue', 'TAG'],
-    ['yellow', 'TAG'],
-  ],
-});
+const prisma = new PrismaClient();
 
 const Tag = ({ color, label }: { color: string; label: string }) => (
   <span className={`px-2 py-1 text-xs rounded-md text-white`} style={{ backgroundColor: color }}>
@@ -27,7 +9,26 @@ const Tag = ({ color, label }: { color: string; label: string }) => (
   </span>
 );
 
-export default function GrantTracker() {
+export default async function Homepage() {
+  const grants = await prisma.grants.findMany({
+    include: {
+      GrantTimelines: true,
+    },
+  });
+
+  const formatted = grants.map((grant) => {
+    const open = grant.GrantTimelines.find(e => e.event_type === 'posted');
+    const close = grant.GrantTimelines.find(e => e.event_type === 'closes');
+
+    return {
+      title: grant.title,
+      amount: '$ TBD',
+      openDate: open?.event_date?.toISOString().split('T')[0] ?? 'N/A',
+      dueDate: close?.event_date?.toISOString().split('T')[0] ?? 'N/A',
+      categories: [['gray', grant.status ?? 'Unknown']],
+    };
+  });
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <header className="flex justify-between items-center bg-black text-white px-6 py-4 rounded-md">
@@ -45,11 +46,6 @@ export default function GrantTracker() {
 
       <section className="mt-8">
         <h1 className="text-3xl font-bold mb-4">Grant Tracker</h1>
-        <div className="flex gap-4 mb-6">
-          <input className="px-4 py-2 rounded shadow" placeholder="Sort by:" />
-          <input className="px-4 py-2 rounded shadow" placeholder="" />
-          <input className="px-4 py-2 rounded shadow" placeholder="" />
-        </div>
         <div className="bg-white shadow rounded-md overflow-x-auto">
           <table className="min-w-full text-left">
             <thead className="bg-gray-200">
@@ -62,7 +58,7 @@ export default function GrantTracker() {
               </tr>
             </thead>
             <tbody>
-              {grants.map((grant, idx) => (
+              {formatted.map((grant, idx) => (
                 <tr key={idx} className="border-t">
                   <td className="px-6 py-4 whitespace-nowrap">{grant.title}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{grant.amount}</td>

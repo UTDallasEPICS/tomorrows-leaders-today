@@ -75,21 +75,21 @@ model GrantTimelines {
 }
 
 model Grants {
-  grant_id                Int                       @id @default(autoincrement())
-  title                   String
-  description             String?
-  category_id             Int?
-  status                  String?
-  website                 String?
-  award_details           String?
-  interview_required      Int?                      @default(0)
-  rolling_basis           Int?                      @default(0)
-  created_at              DateTime?                 @default(now())
-  updated_at              DateTime?                 @default(now())
+  grant_id    Int       @id @default(autoincrement())
+  external_id String    @unique
+  title       String
+  description String?
+  status      String?
+  website     String?
+  created_at  DateTime? @default(now())
+  updated_at  DateTime? @default(now())
+
   ApplicationRequirements ApplicationRequirements[]
   Contacts                Contacts[]
-  GrantFunding            GrantFunding[]
   GrantStipulations       GrantStipulations[]
-  GrantTimelines          GrantTimelines[]
-  GrantCategories         GrantCategories?          @relation(fields: [category_id], references: [category_id], onUpdate: NoAction)
+  GrantCategories         GrantCategories?          @relation(fields: [category_id], references: [category_id])
+  category_id             Int?
+
+  GrantTimelines GrantTimelines[]
+  GrantFunding   GrantFunding[]
 }
