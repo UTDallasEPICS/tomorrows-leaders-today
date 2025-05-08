@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "scrape": "node src/runScrape.js"
+    "scrape": "node src/runScrape.js",
+    "seed": "node scripts/seedGrant.js"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",
