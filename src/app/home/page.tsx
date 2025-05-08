@@ -1,3 +1,5 @@
+// Was formally Homepage.tsx
+
 import React from 'react';
 
 interface Grant {
@@ -8,7 +10,7 @@ interface Grant {
   categories: string[][];
 }
 
-const grants: Grant[] = Array(7).fill({
+const grants: Grant[] = Array(10).fill({
   title: 'Lorem ipsum odor amet, consectetuer adipiscing elit.',
   amount: '$ 1,000',
   openDate: '01/01/25',

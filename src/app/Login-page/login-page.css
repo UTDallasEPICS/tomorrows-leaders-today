@@ -13,16 +13,12 @@ html, body {
 
 .login-wrapper {
   position: fixed;
-    padding: 60px 20px;
-  padding-top:200px;
-
-  padding-left: 450px;
-  
-  top: 0;
-  left: 0;
-  height: 100vh;
-  width: 100vw;
-  overflow: auto;
+  inset: 0;
+  gap: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   color:#EDEDED;
   background-color: #1E1E1E;
   font-family: 'Montserrat', sans-serif;
@@ -30,16 +26,13 @@ html, body {
 
 /* === Login container === */
 .login-container {
+  padding: 40px;
+  border-radius: 30px;
   display: flex;
   flex-direction: column;
+  gap: 2rem;
   align-items: center;
-
   color:#1E1E1E;
- 
-  justify-content: center;
-  border-radius: 30px;
-  height: 528px;
-  width: 725px;
   background-color: #EDEDED;
 }
 
@@ -47,7 +40,6 @@ html, body {
   font-family: 'Zilla Slab', serif;
   font-size: 45px;
   font-weight: 700;
-  margin-left:100px; /* adjust left spacing */
   margin-bottom: 2px;
   text-align: left;
 }
@@ -95,7 +87,6 @@ html, body {
     font-weight: 500;
     color: #1E1E1E;
 
-    margin-left: 100px; /* adjust left spacing */
     margin-top: 4px;
     margin-bottom: 130px;
     text-align: left;
@@ -107,11 +98,12 @@ html, body {
     font-size: 45px;
     font-weight: 500;
     color: #ffffff;
-    margin: 0 0 20px 60px; /* adjust left spacing */
+    margin: 0 0 1rem; /* adjust left spacing */
     text-align: left;
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: center;
+    gap: 0.5rem; /* spacing between icon and text */
   }
 
     .grant-icon {
@@ -120,7 +112,7 @@ html, body {
         border-radius: 50%;         /* makes it a circle */
         object-fit: cover;          /* crop image to fill */
         overflow: hidden;
-        margin-left: 55px;
+        margin: 0;
     }
   
   .login-text-block {

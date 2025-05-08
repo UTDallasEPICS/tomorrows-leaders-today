@@ -1,10 +1,15 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import "./login-page.css";
 
 export default function LoginPage() {
+
+  const router = useRouter(); // Interconnectivity with other pages
+
   const handleGoogleLogin = () => {
     console.log("Google login clicked — waiting on API key");
+    router.push("/home"); // Redirect to home page after login
   };
 
   return (
