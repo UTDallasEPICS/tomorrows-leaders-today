@@ -27,7 +27,7 @@ const BUTTON_COLOR = "#936FB1";     // Background color of the search button
 const BUTTON_HOVER = "#7e5fa2";     // Hover color for the search button
 const SIDEBAR_BG = "#F7F4F4";       // Background color of the sidebar
 
-export default function Home() {
+export default function Slideout() {
   // State to track whether the sidebar is collapsed or expanded
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -136,12 +136,15 @@ export default function Home() {
       </div>
 
       {/* Main Content Area next to the sidebar */}
+      { /*
       <div className="flex-1 ml-5 bg-gray-100 p-6 rounded-lg overflow-auto">
         <h1 className="text-2xl font-semibold mb-2">Main Content Area</h1>
         <p className="text-gray-700">
           Click the triangle to collapse/expand the sidebar. Press Esc to close.
         </p>
       </div>
+      */
+      }
     </div>
   );
 }
