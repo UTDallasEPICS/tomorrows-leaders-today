@@ -1,16 +1,97 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+
+model ApplicationRequirements {
+  requirement_id Int     @id @default(autoincrement())
+  grant_id       Int
+  eligibility    String?
+  materials      String?
+  instructions   String?
+  notes          String?
+  Grants         Grants  @relation(fields: [grant_id], references: [grant_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Contacts {
+  contact_id   Int     @id @default(autoincrement())
+  grant_id     Int
+  contact_type String?
+  contact_info String?
+  availability String?
+  Grants       Grants  @relation(fields: [grant_id], references: [grant_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model FundingOpportunities {
+  funding_id           Int            @id @default(autoincrement())
+  name                 String
+  description          String?
+  source               String?
+  total_funding_amount Float?
+  max_award_amount     Float?
+  application_deadline DateTime?
+  website              String?
+  created_at           DateTime?      @default(now())
+  updated_at           DateTime?      @default(now())
+  GrantFunding         GrantFunding[]
+}
+
+model GrantCategories {
+  category_id     Int      @id @default(autoincrement())
+  name            String
+  description     String?
+  definition_link String?
+  Grants          Grants[]
+}
+
+model GrantFunding {
+  grant_id             Int
+  funding_id           Int
+  FundingOpportunities FundingOpportunities @relation(fields: [funding_id], references: [funding_id], onDelete: Cascade, onUpdate: NoAction)
+  Grants               Grants               @relation(fields: [grant_id], references: [grant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([grant_id, funding_id])
+}
+
+model GrantStipulations {
+  stipulation_id Int     @id @default(autoincrement())
+  grant_id       Int
+  condition      String?
+  notes          String?
+  Grants         Grants  @relation(fields: [grant_id], references: [grant_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model GrantTimelines {
+  timeline_id Int      @id @default(autoincrement())
+  grant_id    Int
+  event_type  String
+  event_date  DateTime
+  details     String?
+  Grants      Grants   @relation(fields: [grant_id], references: [grant_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Grants {
+  grant_id                Int                       @id @default(autoincrement())
+  title                   String
+  description             String?
+  category_id             Int?
+  status                  String?
+  website                 String?
+  award_details           String?
+  interview_required      Int?                      @default(0)
+  rolling_basis           Int?                      @default(0)
+  created_at              DateTime?                 @default(now())
+  updated_at              DateTime?                 @default(now())
+  ApplicationRequirements ApplicationRequirements[]
+  Contacts                Contacts[]
+  GrantFunding            GrantFunding[]
+  GrantStipulations       GrantStipulations[]
+  GrantTimelines          GrantTimelines[]
+  GrantCategories         GrantCategories?          @relation(fields: [category_id], references: [category_id], onUpdate: NoAction)
 }
 
 model GrantCategory {
