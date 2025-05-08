@@ -11,6 +11,7 @@ const grants = [
     closes: '2025-08-15',
     url: null,
   },
+
   {
     external_id: '22-632',
     title: 'Cyberinfrastructure for Sustained Scientific Innovation',
@@ -20,6 +21,7 @@ const grants = [
     closes: '2025-12-01',
     url: null,
   },
+
   {
     external_id: 'FOA-ETA-25-32',
     title: 'Workforce Data Quality Initiative - WDQI Round 10',
@@ -29,6 +31,7 @@ const grants = [
     closes: '2025-05-27',
     url: null,
   },
+
   {
     external_id: '20250701-UG',
     title: 'National Garden of American Heroes: Statues',
@@ -38,6 +41,7 @@ const grants = [
     closes: '2025-07-01',
     url: null,
   },
+
   {
     external_id: 'ED-GRANTS-042325-001',
     title: 'Office of Elementary and Secondary Education (OESE): District of Columbia Opportunity Scholarship Program CFDA Number 84.370A',
@@ -69,6 +73,7 @@ async function seed() {
           event_type: 'posted',
           event_date: new Date(grant.posted),
         },
+
         {
           grant_id: createdGrant.grant_id,
           event_type: 'closes',
@@ -76,7 +81,6 @@ async function seed() {
         },
       ],
     });
-
     // Create Funding Opportunity
     const funding = await prisma.fundingOpportunities.create({
       data: {
@@ -93,6 +97,7 @@ async function seed() {
         grant_id: createdGrant.grant_id,
         funding_id: funding.funding_id,
       },
+
     });
 
     console.log(`✅ Seeded: ${grant.title}`);
@@ -100,6 +105,7 @@ async function seed() {
 
   await prisma.$disconnect();
 }
+
 
 seed().catch((e) => {
   console.error(e);

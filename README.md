@@ -1,42 +1,83 @@
+# Tomorrow's Leaders Today
 
- * File: README.md
- */
-
-# Tomorrows-Leaders-Today
-
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app). It uses the **Next.js 13 app router**, along with **Tailwind CSS**, **TypeScript**, and other modern web tools.
-
----
-
-## Overview
-
-This application serves as a starting point for building a Next.js 13 project with:
-- **App Router** (`app/` directory)
-- **Tailwind CSS** for styling
-- **TypeScript** for type safety
-- Optional deployment to **Vercel** or any Node hosting platform
-
-You can customize it further to suit your needs—add a backend with Prisma, integrate APIs, or extend the UI as needed.
-
----
+A Next.js application for managing and tracking grant opportunities and funding information.
 
 ## Tech Stack
 
-- **Next.js 13** (App Router)  
-- **React** (underlying library)  
-- **Tailwind CSS** (utility-first CSS framework)  
-- **TypeScript** (for type-safe JavaScript)  
-- **PostCSS** & **Autoprefixer** (for CSS transformations)  
-- **(Optional) Prisma & SQLite** (if you plan to add a database)  
+- **Next.js 13** (App Router)
+- **React** (underlying library)
+- **Tailwind CSS** (utility-first CSS framework)
+- **TypeScript** (for type-safe JavaScript)
+- **Prisma** (ORM for PostgreSQL database)
+- **PostgreSQL** (database)
 
----
+## Features
+
+- Grant management system
+- Funding opportunity tracking
+- Application requirement documentation
+- Timeline and deadline tracking
+- Contact information management
 
 ## Getting Started
 
-### 1. Install Dependencies
+### Prerequisites
 
-From the project root folder, install all required packages:
+- Node.js 18.x or later
+- PostgreSQL database
+- Environment variables set up (see `.env.example`)
 
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/your-username/tomorrows-leaders-today.git
+cd tomorrows-leaders-today
+```
+
+2. Install dependencies:
 ```bash
 npm install
+```
+
+3. Set up your environment variables:
+```bash
+cp .env.example .env.local
+```
+Edit `.env.local` with your database credentials and other configuration.
+
+4. Run database migrations:
+```bash
+npx prisma migrate dev
+```
+
+5. Start the development server:
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:3000`.
+
+## Database Schema
+
+The application uses a PostgreSQL database with the following main entities:
+- Grant Categories
+- Grants
+- Grant Timelines
+- Application Requirements
+- Contacts
+- Grant Stipulations
+- Funding Opportunities
+
+For detailed schema information, refer to `prisma/schema.prisma`.
+
+## Development
+
+- Run tests: `npm test`
+- Build for production: `npm run build`
+- Start production server: `npm start`
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
