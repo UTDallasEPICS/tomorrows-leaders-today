@@ -1,7 +1,12 @@
+"use client";
+
 import Image from "next/image";
+import Navbar from "../components/Navbar";
 
 export default function ProfilePage() {
   return (
+    <>
+    <Navbar />
     <div className="min-h-screen bg-gray-50 p-8 grid grid-cols-3 gap-8">
       {/* Left Column (1/3 width) */}
       <div className="col-span-1 space-y-6 sticky top-8 h-fit">
@@ -159,5 +164,6 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

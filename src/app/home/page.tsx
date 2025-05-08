@@ -1,6 +1,9 @@
 // Was formally Homepage.tsx
 
+"use client";
+
 import React from 'react';
+import Navbar from "../components/Navbar";
 
 interface Grant {
   title: string;
@@ -31,6 +34,10 @@ const Tag = ({ color, label }: { color: string; label: string }) => (
 
 export default function GrantTracker() {
   return (
+    <>
+    
+    <Navbar />
+
     <div className="p-6 bg-gray-100 min-h-screen">
       <header className="flex justify-between items-center bg-black text-white px-6 py-4 rounded-md">
         <div className="text-xl font-bold flex items-center gap-4">
@@ -82,5 +89,6 @@ export default function GrantTracker() {
         </div>
       </section>
     </div>
+    </>
   );
 }
