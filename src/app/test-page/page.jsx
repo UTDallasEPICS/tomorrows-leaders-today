@@ -1,11 +1,10 @@
-"use client";
+"use client"; // Ensure this runs on the client side
 
-import Home from "../components/Slideout";
+import Home from "../components/Slideout"; // Adjust the path if your slideout component is in a different folder
 
-export default function testPage() {
+export default function TestPage() {
   return (
-    <div className="flex flex-col items-center justify-center h-screen">
-      <h1 className="text-2xl font-bold mb-4">Test Page</h1>
+    <div className="min-h-screen bg-gray-200 flex items-center justify-center">
       <Home />
     </div>
   );
