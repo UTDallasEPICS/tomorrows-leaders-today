@@ -7,134 +7,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model ApplicationRequirements {
-  requirement_id Int     @id @default(autoincrement())
-  grant_id       Int
-  eligibility    String?
-  materials      String?
-  instructions   String?
-  notes          String?
-  Grants         Grants  @relation(fields: [grant_id], references: [grant_id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-model Contacts {
-  contact_id   Int     @id @default(autoincrement())
-  grant_id     Int
-  contact_type String?
-  contact_info String?
-  availability String?
-  Grants       Grants  @relation(fields: [grant_id], references: [grant_id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-model FundingOpportunities {
-  funding_id           Int            @id @default(autoincrement())
-  name                 String
-  description          String?
-  source               String?
-  total_funding_amount Float?
-  max_award_amount     Float?
-  application_deadline DateTime?
-  website              String?
-  created_at           DateTime?      @default(now())
-  updated_at           DateTime?      @default(now())
-  GrantFunding         GrantFunding[]
-}
-
-model GrantCategories {
-  category_id     Int      @id @default(autoincrement())
-  name            String
-  description     String?
-  definition_link String?
-  Grants          Grants[]
-}
-
-model GrantFunding {
-  grant_id             Int
-  funding_id           Int
-  FundingOpportunities FundingOpportunities @relation(fields: [funding_id], references: [funding_id], onDelete: Cascade, onUpdate: NoAction)
-  Grants               Grants               @relation(fields: [grant_id], references: [grant_id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@id([grant_id, funding_id])
-}
-
-model GrantStipulations {
-  stipulation_id Int     @id @default(autoincrement())
-  grant_id       Int
-  condition      String?
-  notes          String?
-  Grants         Grants  @relation(fields: [grant_id], references: [grant_id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-model GrantTimelines {
-  timeline_id Int      @id @default(autoincrement())
-  grant_id    Int
-  event_type  String
-  event_date  DateTime
-  details     String?
-  Grants      Grants   @relation(fields: [grant_id], references: [grant_id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-model Grants {
-  grant_id    Int       @id @default(autoincrement())
-  external_id String    @unique
-  title       String
-  description String?
-  status      String?
-  website     String?
-  created_at  DateTime? @default(now())
-  updated_at  DateTime? @default(now())
-
-  ApplicationRequirements ApplicationRequirements[]
-  Contacts                Contacts[]
-  GrantStipulations       GrantStipulations[]
-  GrantCategories         GrantCategories?          @relation(fields: [category_id], references: [category_id])
-  category_id             Int?
-
-  GrantTimelines GrantTimelines[]
-  GrantFunding   GrantFunding[]
-}
-
 model GrantCategory {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(100)
-  description String?
+  id             Int     @id @default(autoincrement())
+  name           String
+  description    String?
   definitionLink String?
-  grants      Grant[]
+  grants         Grant[]
 }
 
 model Grant {
   id                Int      @id @default(autoincrement())
-  title             String   @db.VarChar(255)
+  externalId        String   @unique
+  title             String
   description       String?
-  categoryId        Int?
-  category          GrantCategory? @relation(fields: [categoryId], references: [id])
-  status            String?  @db.VarChar(50)
-  website           String?  @db.VarChar(255)
+  status            String?
+  website           String?
   awardDetails      String?
   interviewRequired Boolean  @default(false)
   rollingBasis      Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-  timelines         GrantTimeline[]
-  requirements      ApplicationRequirement[]
-  contacts          Contact[]
-  stipulations      GrantStipulation[]
-  funding           GrantFunding[]
+
+  categoryId Int?
+  category   GrantCategory? @relation(fields: [categoryId], references: [id])
+
+  timelines    GrantTimeline[]
+  requirements ApplicationRequirement[]
+  contacts     Contact[]
+  stipulations GrantStipulation[]
+  fundingLinks GrantFunding[]
 }
 
 model GrantTimeline {
   id        Int      @id @default(autoincrement())
   grantId   Int
   grant     Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  eventType String   @db.VarChar(100)
+  eventType String
   eventDate DateTime
   details   String?
 }
 
 model ApplicationRequirement {
-  id           Int      @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   grantId      Int
-  grant        Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  grant        Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
   eligibility  String?
   materials    String?
   instructions String?
@@ -142,41 +58,43 @@ model ApplicationRequirement {
 }
 
 model Contact {
-  id           Int      @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   grantId      Int
-  grant        Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  contactType  String?  @db.VarChar(50)
-  contactInfo  String?  @db.VarChar(255)
-  availability String?  @db.VarChar(100)
+  grant        Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  contactType  String?
+  contactInfo  String?
+  availability String?
 }
 
 model GrantStipulation {
-  id        Int      @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   grantId   Int
-  grant     Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  grant     Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
   condition String?
   notes     String?
 }
 
 model FundingOpportunity {
-  id                  Int      @id @default(autoincrement())
-  name                String   @db.VarChar(255)
+  id                  Int       @id @default(autoincrement())
+  name                String
   description         String?
-  source              String?  @db.VarChar(255)
-  totalFundingAmount  Decimal? @db.Decimal(15, 2)
-  maxAwardAmount      Decimal? @db.Decimal(15, 2)
+  source              String?
+  totalFundingAmount  Float?
+  maxAwardAmount      Float?
   applicationDeadline DateTime?
-  website             String?  @db.VarChar(255)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  grants              GrantFunding[]
+  website             String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  grants GrantFunding[]
 }
 
 model GrantFunding {
-  grantId              Int
-  fundingId            Int
-  grant                Grant               @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  fundingOpportunity   FundingOpportunity  @relation(fields: [fundingId], references: [id], onDelete: Cascade)
+  grantId   Int
+  fundingId Int
+
+  grant   Grant              @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  funding FundingOpportunity @relation(fields: [fundingId], references: [id], onDelete: Cascade)
 
   @@id([grantId, fundingId])
 }

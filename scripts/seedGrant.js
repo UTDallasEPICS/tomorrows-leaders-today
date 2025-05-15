@@ -1,4 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
+
 const prisma = new PrismaClient();
 
 const grants = [
@@ -11,7 +12,6 @@ const grants = [
     closes: '2025-08-15',
     url: null,
   },
-
   {
     external_id: '22-632',
     title: 'Cyberinfrastructure for Sustained Scientific Innovation',
@@ -21,7 +21,6 @@ const grants = [
     closes: '2025-12-01',
     url: null,
   },
-
   {
     external_id: 'FOA-ETA-25-32',
     title: 'Workforce Data Quality Initiative - WDQI Round 10',
@@ -31,7 +30,6 @@ const grants = [
     closes: '2025-05-27',
     url: null,
   },
-
   {
     external_id: '20250701-UG',
     title: 'National Garden of American Heroes: Statues',
@@ -41,7 +39,6 @@ const grants = [
     closes: '2025-07-01',
     url: null,
   },
-
   {
     external_id: 'ED-GRANTS-042325-001',
     title: 'Office of Elementary and Secondary Education (OESE): District of Columbia Opportunity Scholarship Program CFDA Number 84.370A',
@@ -55,49 +52,53 @@ const grants = [
 
 async function seed() {
   for (const grant of grants) {
-    // Create Grant
-    const createdGrant = await prisma.grants.create({
+    const existing = await prisma.grant.findUnique({
+      where: { externalId: grant.external_id }
+    });
+
+    if (existing) {
+      console.log(`⚠️ Skipped existing grant: ${grant.title}`);
+      continue;
+    }
+
+    const created = await prisma.grant.create({
       data: {
-        external_id: grant.external_id,
+        externalId: grant.external_id,
         title: grant.title,
         status: grant.status,
         website: grant.url,
-      },
+      }
     });
 
-    // Create Timelines
-    await prisma.grantTimelines.createMany({
+    await prisma.grantTimeline.createMany({
       data: [
         {
-          grant_id: createdGrant.grant_id,
-          event_type: 'posted',
-          event_date: new Date(grant.posted),
+          grantId: created.id,
+          eventType: 'posted',
+          eventDate: new Date(grant.posted)
         },
-
         {
-          grant_id: createdGrant.grant_id,
-          event_type: 'closes',
-          event_date: new Date(grant.closes),
-        },
-      ],
+          grantId: created.id,
+          eventType: 'closes',
+          eventDate: new Date(grant.closes)
+        }
+      ]
     });
-    // Create Funding Opportunity
-    const funding = await prisma.fundingOpportunities.create({
+
+    const funding = await prisma.fundingOpportunity.create({
       data: {
         name: grant.title,
         source: grant.agency,
         website: grant.url,
-        application_deadline: new Date(grant.closes),
-      },
+        applicationDeadline: new Date(grant.closes)
+      }
     });
 
-    // Link Grant to Funding
     await prisma.grantFunding.create({
       data: {
-        grant_id: createdGrant.grant_id,
-        funding_id: funding.funding_id,
-      },
-
+        grantId: created.id,
+        fundingId: funding.id
+      }
     });
 
     console.log(`✅ Seeded: ${grant.title}`);
@@ -106,8 +107,8 @@ async function seed() {
   await prisma.$disconnect();
 }
 
-
-seed().catch((e) => {
+seed().catch(async (e) => {
   console.error(e);
-  prisma.$disconnect();
+  await prisma.$disconnect();
+  process.exit(1);
 });
