@@ -8,8 +8,8 @@ A Next.js application for managing and tracking grant opportunities and funding 
 - **React** (underlying library)
 - **Tailwind CSS** (utility-first CSS framework)
 - **TypeScript** (for type-safe JavaScript)
-- **Prisma** (ORM for PostgreSQL database)
-- **PostgreSQL** (database)
+- **Prisma** (ORM for SQLite database)
+- **SQLite** (database)
 
 ## Features
 
@@ -79,9 +79,9 @@ For detailed schema information, refer to `prisma/schema.prisma`.
 
 ## Development
 
-- Run tests: `npm test`
-- Build for production: `npm run build`
-- Start production server: `npm start`
+- Run tests: `pnpm test`
+- Build for production: `pnpm run build`
+- Start production server: `pnpm start`
 
 ## License
 
