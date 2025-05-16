@@ -24,6 +24,7 @@ A Next.js application for managing and tracking grant opportunities and funding 
 ### Prerequisites
 
 - Node.js 18.x or later
+- pnpm
 - PostgreSQL database
 - Environment variables set up (see `.env.example`)
 
@@ -37,23 +38,28 @@ cd tomorrows-leaders-today
 
 2. Install dependencies:
 ```bash
-npm install
+pnpm install
 ```
 
 3. Set up your environment variables:
 ```bash
-cp .env.example .env.local
+cp .env.example .env
 ```
 Edit `.env.local` with your database credentials and other configuration.
 
-4. Run database migrations:
+4. Generate the Prisma client
 ```bash
-npx prisma migrate dev
+pnpm exec prisma generate
 ```
 
-5. Start the development server:
+5. Run database migrations:
 ```bash
-npm run dev
+pnpm exec prisma migrate dev
+```
+
+6. Start the development server:
+```bash
+pnpm run dev
 ```
 
 The application will be available at `http://localhost:3000`.
