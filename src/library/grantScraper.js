@@ -1,7 +1,7 @@
 // npm install axios cheerio
 
 import axios from 'axios';
-
+import prismaClient from './db.js';
 /**
  * Fetches grants from grants.gov's JSON API instead of HTML parsing due to technical issues.
  * @param {string} query - The search keyword(s), e.g. "education".
@@ -35,6 +35,31 @@ export async function grantScraper(query, rows = 20) {
     });
 
     const list = data.oppHits || [];
+    for (const opp of list) {
+    try {
+      await prismaClient.grant.upsert({
+        where: { externalId: opp.id.toString() },
+        update: {
+          title: opp.title,
+          description: opp.synopsis,
+          status: opp.oppStatus,
+          website: `https://grants.gov/search-results-detail/${opp.id}`,
+          updatedAt: new Date(),
+        },
+        create: {
+          externalId: opp.id.toString(),
+          title: opp.title,
+          description: opp.synopsis,
+          status: opp.oppStatus,
+          website: `https://grants.gov/search-results-detail/${opp.id}`,
+          createdAt: new Date(),
+        },
+      });
+    } catch (err) {
+      console.error("Error: could not add or update grant:", opp.id, err.message);
+    }
+  }
+
     console.log("Total matching grants:", data.hitCount);
     console.log("Number of grants in this page:", data.oppHits.length);
 
