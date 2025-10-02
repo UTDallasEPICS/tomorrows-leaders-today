@@ -4,32 +4,99 @@ import Image from "next/image";
 import Navbar from "../components/Navbar";
 import { useState } from "react";
 
+
 export default function ProfilePage() {
-  
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [userInfo, setUserInfo] = useState({
     fullName: "John Doe",
     email: "john.doe@example.com",
-    phone: "(123) 456-7890"
+    phone: "123-456-7890"
   });
 
   const [editForm, setEditForm] = useState(userInfo);
+  const [errors, setErrors] = useState({
+    fullName: "",
+    email: "",
+    phone: ""
+  });
+
+  const formatPhoneNumber = (phone: string) => {
+    // Remove all non-numeric characters
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // Check if it's a valid 10-digit number
+    if (cleaned.length === 10) {
+      return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    
+    return phone; // Return original if not 10 digits
+  };
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateForm = () => {
+    const newErrors = {
+      fullName: "",
+      email: "",
+      phone: ""
+    };
+
+    let isValid = true;
+
+    // Validate full name
+    if (!editForm.fullName.trim()) {
+      newErrors.fullName = "Full name is required";
+      isValid = false;
+    }
+
+    // Validate email
+    if (!editForm.email.trim()) {
+      newErrors.email = "Email is required";
+      isValid = false;
+    } else if (!validateEmail(editForm.email)) {
+      newErrors.email = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    // Validate phone
+    if (!editForm.phone.trim()) {
+      newErrors.phone = "Phone number is required";
+      isValid = false;
+    } else {
+      const cleaned = editForm.phone.replace(/\D/g, '');
+      if (cleaned.length !== 10) {
+        newErrors.phone = "Phone number must be 10 digits";
+        isValid = false;
+      }
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
 
   const handleEditClick = () => {
     setEditForm(userInfo);
+    setErrors({ fullName: "", email: "", phone: "" });
     setIsEditModalOpen(true);
   };
 
   const handleSave = () => {
-    setUserInfo(editForm);
-    setIsEditModalOpen(false);
+    if (validateForm()) {
+      // Format phone number before saving
+      const formattedPhone = formatPhoneNumber(editForm.phone);
+      setUserInfo({ ...editForm, phone: formattedPhone });
+      setIsEditModalOpen(false);
+    }
   };
 
   const handleCancel = () => {
     setEditForm(userInfo);
+    setErrors({ fullName: "", email: "", phone: "" });
     setIsEditModalOpen(false);
   };
-
   
   return (
     <>
@@ -48,7 +115,7 @@ export default function ProfilePage() {
                 className="object-cover"
               />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">John Doe</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{userInfo.fullName}</h1>
             <p className="text-gray-600">Member since 2023</p>
           </div>
 
@@ -193,8 +260,8 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
-          {/* Edit Modal */}
-          {isEditModalOpen && (
+       {/* Edit Modal */}
+      {isEditModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Basic Information</h2>
@@ -207,9 +274,19 @@ export default function ProfilePage() {
                 <input
                   type="text"
                   value={editForm.fullName}
-                  onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => {
+                    setEditForm({ ...editForm, fullName: e.target.value });
+                    if (errors.fullName) setErrors({ ...errors, fullName: "" });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                    errors.fullName 
+                      ? "border-red-500 focus:ring-red-500" 
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
                 />
+                {errors.fullName && (
+                  <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>
+                )}
               </div>
 
               <div>
@@ -219,9 +296,19 @@ export default function ProfilePage() {
                 <input
                   type="email"
                   value={editForm.email}
-                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => {
+                    setEditForm({ ...editForm, email: e.target.value });
+                    if (errors.email) setErrors({ ...errors, email: "" });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                    errors.email 
+                      ? "border-red-500 focus:ring-red-500" 
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
                 />
+                {errors.email && (
+                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                )}
               </div>
 
               <div>
@@ -231,9 +318,20 @@ export default function ProfilePage() {
                 <input
                   type="tel"
                   value={editForm.phone}
-                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => {
+                    setEditForm({ ...editForm, phone: e.target.value });
+                    if (errors.phone) setErrors({ ...errors, phone: "" });
+                  }}
+                  placeholder="xxx-xxx-xxxx or xxxxxxxxxx"
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                    errors.phone 
+                      ? "border-red-500 focus:ring-red-500" 
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
                 />
+                {errors.phone && (
+                  <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                )}
               </div>
             </div>
 
