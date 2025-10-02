@@ -1,9 +1,36 @@
-//"use client";
+"use client";
 
 import Image from "next/image";
 import Navbar from "../components/Navbar";
+import { useState } from "react";
 
 export default function ProfilePage() {
+  
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [userInfo, setUserInfo] = useState({
+    fullName: "John Doe",
+    email: "john.doe@example.com",
+    phone: "(123) 456-7890"
+  });
+
+  const [editForm, setEditForm] = useState(userInfo);
+
+  const handleEditClick = () => {
+    setEditForm(userInfo);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSave = () => {
+    setUserInfo(editForm);
+    setIsEditModalOpen(false);
+  };
+
+  const handleCancel = () => {
+    setEditForm(userInfo);
+    setIsEditModalOpen(false);
+  };
+
+  
   return (
     <>
     <Navbar />
@@ -25,36 +52,38 @@ export default function ProfilePage() {
             <p className="text-gray-600">Member since 2023</p>
           </div>
 
-          {/* Basic Info Section */}
-          <div className="mt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-800">Basic Information</h2>
-              <button className="text-gray-500 hover:text-gray-700">
-                {/* Simple pencil SVG icon */}
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-                  <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-                  <path d="M2 2l7.586 7.586"></path>
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-500">Full Name</p>
-                <p className="text-gray-800">John Doe</p>
+            {/* Basic Info Section */}
+            <div className="mt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-gray-800">Basic Information</h2>
+                <button 
+                  onClick={handleEditClick}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                    <path d="M2 2l7.586 7.586"></path>
+                  </svg>
+                </button>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="text-gray-800">john.doe@example.com</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Phone</p>
-                <p className="text-gray-800">(123) 456-7890</p>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-500">Full Name</p>
+                  <p className="text-gray-800">{userInfo.fullName}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-gray-800">{userInfo.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Phone</p>
+                  <p className="text-gray-800">{userInfo.phone}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
       {/* Right Column (2/3 width) */}
       <div className="col-span-2 space-y-6 overflow-y-auto max-h-[calc(100vh-4rem)] pr-2">
@@ -164,6 +193,67 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
+          {/* Edit Modal */}
+          {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Basic Information</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={editForm.fullName}
+                  onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleCancel}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
