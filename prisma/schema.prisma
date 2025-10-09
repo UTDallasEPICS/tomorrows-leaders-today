@@ -22,21 +22,21 @@ model Grant {
   agency            String?
   openingDate       DateTime?
   closingDate       DateTime?
-  grantType         String?   
+  applicationType         String?   
   category          String?
   applicationLink   String?
   awardFloor        Float?
   awardCeiling      Float?
   totalFundingAmount  Float?
 
-  contacts          Contact[]
+  contacts          GrantContact[]
   assistanceListings AssistanceListing[]
   applications      GrantApplication[]
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }
 
-model Contact {
+model GrantContact {
   id        Int    @id @default(autoincrement())
   grantId   Int
   grant     Grant  @relation(fields: [grantId], references: [id], onDelete: Cascade)
