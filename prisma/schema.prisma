@@ -7,94 +7,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model GrantCategory {
-  id             Int     @id @default(autoincrement())
-  name           String
-  description    String?
-  definitionLink String?
-  grants         Grant[]
+model Account {
+  id             Int      @id @default(autoincrement())
+  fullName       String
+  email          String   @unique
+  phone          String
+  applications   GrantApplication[]
 }
 
 model Grant {
-  id                Int      @id @default(autoincrement())
-  externalId        String   @unique
+  id                Int       @id @default(autoincrement())
+  opportunityNumber String    @unique
   title             String
-  description       String?
-  status            String?
-  website           String?
-  awardDetails      String?
-  interviewRequired Boolean  @default(false)
-  rollingBasis      Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  categoryId Int?
-  category   GrantCategory? @relation(fields: [categoryId], references: [id])
-
-  timelines    GrantTimeline[]
-  requirements ApplicationRequirement[]
-  contacts     Contact[]
-  stipulations GrantStipulation[]
-  fundingLinks GrantFunding[]
-}
-
-model GrantTimeline {
-  id        Int      @id @default(autoincrement())
-  grantId   Int
-  grant     Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  eventType String
-  eventDate DateTime
-  details   String?
-}
-
-model ApplicationRequirement {
-  id           Int     @id @default(autoincrement())
-  grantId      Int
-  grant        Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  eligibility  String?
-  materials    String?
-  instructions String?
-  notes        String?
-}
-
-model Contact {
-  id           Int     @id @default(autoincrement())
-  grantId      Int
-  grant        Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  contactType  String?
-  contactInfo  String?
-  availability String?
-}
-
-model GrantStipulation {
-  id        Int     @id @default(autoincrement())
-  grantId   Int
-  grant     Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  condition String?
-  notes     String?
-}
-
-model FundingOpportunity {
-  id                  Int       @id @default(autoincrement())
-  name                String
-  description         String?
-  source              String?
+  agency            String?
+  openingDate       DateTime?
+  closingDate       DateTime?
+  applicationType         String?   
+  category          String?
+  applicationLink   String?
+  awardFloor        Float?
+  awardCeiling      Float?
   totalFundingAmount  Float?
-  maxAwardAmount      Float?
-  applicationDeadline DateTime?
-  website             String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
 
-  grants GrantFunding[]
+  contacts          GrantContact[]
+  assistanceListings AssistanceListing[]
+  applications      GrantApplication[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
-model GrantFunding {
+model GrantContact {
+  id        Int    @id @default(autoincrement())
   grantId   Int
-  fundingId Int
+  grant     Grant  @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  name      String?
+  email     String?
+  phone     String?
+}
 
-  grant   Grant              @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  funding FundingOpportunity @relation(fields: [fundingId], references: [id], onDelete: Cascade)
+model AssistanceListing {
+  id      Int    @id @default(autoincrement())
+  grantId Int
+  grant   Grant  @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  code    String 
+  name    String
+  link    String?
+}
 
-  @@id([grantId, fundingId])
+model GrantApplication {
+  id           Int      @id @default(autoincrement())
+  grantId      Int
+  accountId    Int
+  applicationDate    DateTime @default(now())
+  status       String   @default("Not Applied") 
+  
+  grant   Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 }
