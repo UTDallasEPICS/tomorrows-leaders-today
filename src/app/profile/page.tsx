@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import Navbar from "../components/Navbar";
+import ProfileHeader from "./components/ProfileHeader";
+import { FoundationsContacted } from "./components/FoundationsContacted";
 
 export default function ProfilePage() {
   return (
@@ -12,18 +14,7 @@ export default function ProfilePage() {
       <div className="col-span-1 space-y-6 sticky top-8 h-fit">
         {/* Profile Header */}
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex flex-col items-center">
-            <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden border-4 border-white shadow-lg">
-              <Image
-                src="/icon.png"
-                alt="Profile picture"
-                fill
-                className="object-cover"
-              />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900">John Doe</h1>
-            <p className="text-gray-600">Member since 2023</p>
-          </div>
+          <ProfileHeader />
 
           {/* Basic Info Section */}
           <div className="mt-6">
@@ -136,32 +127,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Foundations Contacted Section */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Foundations Contacted</h2>
-          <div className="space-y-4">
-            <div className="p-4 border rounded-lg">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-medium">Gates Foundation</p>
-                  <p className="text-sm text-gray-500">Education Initiative</p>
-                </div>
-                <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">Active</span>
-              </div>
-              <p className="mt-2 text-sm">Last contacted: 03/15/2023</p>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-medium">Ford Foundation</p>
-                  <p className="text-sm text-gray-500">Social Justice Program</p>
-                </div>
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm rounded-full">Pending</span>
-              </div>
-              <p className="mt-2 text-sm">Last contacted: 04/01/2023</p>
-            </div>
-          </div>
-        </div>
+        <FoundationsContacted />
       </div>
     </div>
     </>
