@@ -2,12 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { signIn } from "@/library/auth-client";
+import { useEffect } from "react";
+import { signIn, useSession } from "@/library/auth-client";
 import "./login-page.css";
 
 export default function LoginPage() {
 
   const router = useRouter(); // Interconnectivity with other pages
+  const session = useSession(); // Auth session
+
+  useEffect(() => {
+    if (!session.isPending && !!session.data) {
+      router.push("/home")
+    }
+  }, [session]);
+
   const {
     register,
     handleSubmit
