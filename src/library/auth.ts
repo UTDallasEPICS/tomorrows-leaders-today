@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { magicLink } from "better-auth/plugins/magic-link";
 import { createTransport } from "nodemailer";
 import { env } from "process";
 
@@ -23,19 +24,16 @@ export const auth = betterAuth({
     database: prismaAdapter(prisma, {
         provider: DATABASE_PROVIDER // Change to 
     }),
-    emailAndPassword: {
-        enabled: false
-    },
-    emailVerification: {
-        sendOnSignUp: true,
-        autoSignInAfterVerification: true,
-        sendVerificationEmail: async ({ user, url }) => {
-            transporter.sendMail({
-                from: `TLT-Tomorrow's Leaders Today <${env.NODEMAILER_USER}>`,
-                to: user.email,
-                subject: "Email Verification",
-                html: `Click the link to verify your email: ${url}`
-            })
-        },
-    }
+    plugins: [
+        magicLink({
+            sendMagicLink: async ({ email, url }) => {
+                transporter.sendMail({
+                    from: `TLT-Tomorrow's Leaders Today <${env.NODEMAILER_USER}>`,
+                    to: email,
+                    subject: "Email Verification",
+                    html: `Click the link to verify your email: ${url}`
+                })
+            },
+        }),
+    ],
 })
