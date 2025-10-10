@@ -34,6 +34,7 @@ export const auth = betterAuth({
                     html: `Click the link to verify your email: ${url}`
                 })
             },
+            disableSignUp: false,
         }),
     ],
 })

@@ -9,17 +9,18 @@ export const POST = async (req: Request) => {
 			throw "bad args";
 		}
 
+		console.log(process.env.APP_URL);
+
 		const res = await auth.api.signInMagicLink({
 			body: {
 				email: body.email,
 				name: "TLT",
-				callbackURL: "/",
-				newUserCallbackURL: "/",
+				callbackURL: `${process.env.BETTER_AUTH_URL}/home`,
+				newUserCallbackURL: `${process.env.BETTER_AUTH_URL}/home`,
+				errorCallbackURL: process.env.BETTER_AUTH_URL
 			},
 			headers: {}
 		});
-
-		console.log(res);
 
 		return Response.json({ status: 200 });
 	} catch (e) {

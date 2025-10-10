@@ -15,7 +15,7 @@ export default function LoginPage() {
 
   const onSubmit = async ({ email }: { email: string }) => {
     await signIn.magicLink({
-      email: email
+      email: email,
     }, {
       onRequest: () => console.log("sending"),
       onResponse: () => console.log("received response"),
