@@ -3,8 +3,10 @@
 import Image from "next/image";
 import Navbar from "../components/Navbar";
 import GrantFields from "./components/GrantFields";
+import { protect } from "@/library/auth"; // useProtected if this is turned into client component
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  await protect();
   return (
     <>
       <Navbar />

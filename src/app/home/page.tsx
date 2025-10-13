@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import React from 'react';
 import Navbar from "../components/Navbar";
+import { protect } from '@/library/auth';
 
 // Define interfaces for type safety
 interface Timeline {
@@ -32,6 +33,8 @@ const Tag = ({ color, label }: { color: string; label: string }) => (
 );
 
 export default async function Homepage() {
+  await protect();
+
   const grants = await prisma.grant.findMany({
     include: {
       timelines: true,

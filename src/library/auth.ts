@@ -2,22 +2,11 @@ import { prisma } from "./db";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { magicLink } from "better-auth/plugins/magic-link";
-import { createTransport } from "nodemailer";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { env } from "process";
 
 const DATABASE_PROVIDER = "sqlite" // "sqlite" | "cockroachdb" | "mysql" | "postgresql" | "sqlserver" | "mongodb"
-
-console.log(env.NODEMAILER_USER);
-
-const transporter = createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-        user: env.NODEMAILER_USER,
-        pass: env.NODEMAILER_PASS
-    }
-})
 
 export const auth = betterAuth({
     appName: "auth-tlt",
@@ -27,6 +16,16 @@ export const auth = betterAuth({
     plugins: [
         magicLink({
             sendMagicLink: async ({ email, url }) => {
+                const mailer = await import("nodemailer"); // can't do this at top-level b/c middleware runs in Edge, and nodemailer does not.
+                const transporter = mailer.createTransport({
+                    host: "smtp.gmail.com",
+                    port: 465,
+                    secure: true,
+                    auth: {
+                        user: env.NODEMAILER_USER,
+                        pass: env.NODEMAILER_PASS
+                    }
+                });
                 transporter.sendMail({
                     from: `TLT-Tomorrow's Leaders Today <${env.NODEMAILER_USER}>`,
                     to: email,
@@ -37,4 +36,18 @@ export const auth = betterAuth({
             disableSignUp: false,
         }),
     ],
-})
+});
+
+export const protect = async () => {
+    // Get session with betterauth API
+    const session = await auth.api.getSession({
+        headers: await headers()
+    });
+
+    if (!session) {
+        // Bad session, redirect to login
+        redirect("/Login-page");
+    }
+
+    return session;
+}
