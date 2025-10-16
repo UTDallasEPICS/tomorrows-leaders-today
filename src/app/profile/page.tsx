@@ -4,6 +4,7 @@ import Image from "next/image";
 import Navbar from "../components/Navbar";
 import { useState } from "react";
 import GrantFields from "./components/GrantFields";
+import ProfileHeader from './components/ProfileHeader';
 
 export default function ProfilePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -106,19 +107,8 @@ export default function ProfilePage() {
         <div className="col-span-1 space-y-6 sticky top-8 h-fit">
           {/* Profile Header */}
           <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex flex-col items-center">
-              <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden border-4 border-white shadow-lg">
-                <Image
-                  src="/icon.png"
-                  alt="Profile picture"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900">{userInfo.fullName}</h1>
-              <p className="text-gray-600">Member since 2023</p>
-            </div>
-
+            <ProfileHeader fullname={userInfo.fullName} />
+            
             {/* Basic Info Section */}
             <div className="mt-6">
               <div className="flex justify-between items-center mb-4">
