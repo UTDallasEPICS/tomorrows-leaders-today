@@ -1,47 +1,138 @@
-//"use client";
-
+"use client";
+import { SquarePen } from 'lucide-react';
 import Image from "next/image";
 import Navbar from "../components/Navbar";
+import { useState } from "react";
 import GrantFields from "./components/GrantFields";
 import ProfileHeader from "./components/ProfileHeader";
 import { FoundationsContacted } from "./components/FoundationsContacted";
 
 export default function ProfilePage() {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [userInfo, setUserInfo] = useState({
+    fullName: "John Doe",
+    email: "john.doe@example.com",
+    phone: "123-456-7890"
+  });
+
+  const [editForm, setEditForm] = useState(userInfo);
+  const [errors, setErrors] = useState({
+    fullName: "",
+    email: "",
+    phone: ""
+  });
+
+  const formatPhoneNumber = (phone: string) => {
+    // Remove all non-numeric characters
+    const cleaned = phone.replace(/\D/g, '');
+
+    // Check if it's a valid 10-digit number
+    if (cleaned.length === 10) {
+      return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+
+    return phone; // Return original if not 10 digits
+  };
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateForm = () => {
+    const newErrors = {
+      fullName: "",
+      email: "",
+      phone: ""
+    };
+
+    let isValid = true;
+
+    // Validate full name
+    if (!editForm.fullName.trim()) {
+      newErrors.fullName = "Full name is required";
+      isValid = false;
+    }
+
+    // Validate email
+    if (!editForm.email.trim()) {
+      newErrors.email = "Email is required";
+      isValid = false;
+    } else if (!validateEmail(editForm.email)) {
+      newErrors.email = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    // Validate phone
+    if (!editForm.phone.trim()) {
+      newErrors.phone = "Phone number is required";
+      isValid = false;
+    } else {
+      const cleaned = editForm.phone.replace(/\D/g, '');
+      if (cleaned.length !== 10) {
+        newErrors.phone = "Phone number must be 10 digits";
+        isValid = false;
+      }
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleEditClick = () => {
+    setEditForm(userInfo);
+    setErrors({ fullName: "", email: "", phone: "" });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSave = () => {
+    if (validateForm()) {
+      // Format phone number before saving
+      const formattedPhone = formatPhoneNumber(editForm.phone);
+      setUserInfo({ ...editForm, phone: formattedPhone });
+      setIsEditModalOpen(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditForm(userInfo);
+    setErrors({ fullName: "", email: "", phone: "" });
+    setIsEditModalOpen(false);
+  };
+
   return (
     <>
-    <Navbar />
-    <div className="min-h-screen bg-gray-50 p-8 grid grid-cols-3 gap-8">
-      {/* Left Column (1/3 width) */}
-      <div className="col-span-1 space-y-6 sticky top-8 h-fit">
-        {/* Profile Header */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <ProfileHeader />
+      <Navbar />
+      <div className="min-h-screen bg-gray-50 p-8 grid grid-cols-3 gap-8">
+        {/* Left Column (1/3 width) */}
+        <div className="col-span-1 space-y-6 sticky top-8 h-fit">
+          {/* Profile Header */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <ProfileHeader fullname={userInfo.fullName} />
 
             {/* Basic Info Section */}
             <div className="mt-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold text-gray-800">Basic Information</h2>
-                <button className="text-gray-500 hover:text-gray-700">
-                  {/* Simple pencil SVG icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-                    <path d="M2 2l7.586 7.586"></path>
-                  </svg>
+                <button
+                  onClick={handleEditClick}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <SquarePen />
                 </button>
               </div>
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-500">Full Name</p>
-                  <p className="text-gray-800">John Doe</p>
+                  <p className="text-gray-800">{userInfo.fullName}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Email</p>
-                  <p className="text-gray-800">john.doe@example.com</p>
+                  <p className="text-gray-800">{userInfo.email}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Phone</p>
-                  <p className="text-gray-800">(123) 456-7890</p>
+                  <p className="text-gray-800">{userInfo.phone}</p>
                 </div>
               </div>
             </div>
@@ -69,7 +160,6 @@ export default function ProfilePage() {
               <span className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full">Arts</span>
             </div>
           </div>
-
           {/* Grant Fields Section */}
           <GrantFields />
 
@@ -103,9 +193,102 @@ export default function ProfilePage() {
             </div>
           </div>
 
-        <FoundationsContacted />
+          <FoundationsContacted />
+        </div>
+        <div>
+
+
+          {/* Edit Modal */}
+          {isEditModalOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Basic Information</h2>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.fullName}
+                      onChange={(e) => {
+                        setEditForm({ ...editForm, fullName: e.target.value });
+                        if (errors.fullName) setErrors({ ...errors, fullName: "" });
+                      }}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${errors.fullName
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-blue-500"
+                        }`}
+                    />
+                    {errors.fullName && (
+                      <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => {
+                        setEditForm({ ...editForm, email: e.target.value });
+                        if (errors.email) setErrors({ ...errors, email: "" });
+                      }}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${errors.email
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-blue-500"
+                        }`}
+                    />
+                    {errors.email && (
+                      <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={editForm.phone}
+                      onChange={(e) => {
+                        setEditForm({ ...editForm, phone: e.target.value });
+                        if (errors.phone) setErrors({ ...errors, phone: "" });
+                      }}
+                      placeholder="xxx-xxx-xxxx or xxxxxxxxxx"
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${errors.phone
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-blue-500"
+                        }`}
+                    />
+                    {errors.phone && (
+                      <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={handleCancel}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </>
   );
 }
