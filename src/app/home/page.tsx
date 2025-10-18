@@ -3,16 +3,22 @@ import React from 'react';
 import Navbar from "../components/Navbar";
 
 // Define interfaces for type safety
-interface Timeline {
-  eventType: string;
-  eventDate?: Date;
+interface GrantApplication {
+  grantId: number;
+  accountId: number;
+  applicationDate: Date;
+  status: string;
 }
 
 interface Grant {
   id: number;
   title: string;
-  status?: string;
-  timelines: Timeline[];
+  agency: string;
+  openingDate?: Date;
+  closingDate?: Date;
+  category?: string;
+  applicationType?: string;
+  applications: GrantApplication[];
 }
 
 interface FormattedGrant {
@@ -20,7 +26,7 @@ interface FormattedGrant {
   amount: string;
   openDate: string;
   dueDate: string;
-  categories: [string, string][];
+  status: [string, string];
 }
 
 const prisma = new PrismaClient();
@@ -34,19 +40,18 @@ const Tag = ({ color, label }: { color: string; label: string }) => (
 export default async function Homepage() {
   const grants = await prisma.grant.findMany({
     include: {
-      timelines: true,
+      applications: true,
     },
   }) as Grant[];
 
   const formatted: FormattedGrant[] = grants.map((grant: Grant) => {
-    const open = grant.timelines.find((e: Timeline) => e.eventType === 'posted');
-    const close = grant.timelines.find((e: Timeline) => e.eventType === 'closes');
+    const status = grant.applications[0]?.status || 'Not Applied';
     return {
       title: grant.title,
       amount: '$ TBD',
-      openDate: open?.eventDate?.toISOString().split('T')[0] ?? 'N/A',
-      dueDate: close?.eventDate?.toISOString().split('T')[0] ?? 'N/A',
-      categories: [['gray', grant.status ?? 'Unknown']] as [string, string][],
+      openDate: grant.openingDate?.toISOString().split('T')[0] ?? 'N/A',
+      dueDate: grant.closingDate?.toISOString().split('T')[0] ?? 'N/A',
+      status: ["gray", status],
     };
   });
 
@@ -75,9 +80,7 @@ export default async function Homepage() {
                     <td className="px-6 py-4 whitespace-nowrap">{grant.openDate}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{grant.dueDate}</td>
                     <td className="px-6 py-4 flex gap-2 flex-wrap">
-                      {grant.categories.map(([color, label]: [string, string], tagIdx: number) => (
-                        <Tag key={tagIdx} color={color} label={label} />
-                      ))}
+                      <Tag color={grant.status[0]} label={grant.status[1]} />
                     </td>
                   </tr>
                 ))}
