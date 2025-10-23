@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import React from 'react';
 import Navbar from "../components/Navbar";
+import { SearchBar} from "./SearchBar";
 
 // Define interfaces for type safety
 interface Timeline {
@@ -56,7 +57,8 @@ export default async function Homepage() {
       <div className="p-6 bg-gray-100 min-h-screen">
         <section className="mt-8">
           <h1 className="text-3xl font-bold mb-4">Grant Tracker</h1>
-          <div className="bg-white shadow rounded-md overflow-x-auto">
+          <SearchBar />
+          <div className="bg-gray-400 shadow rounded-md overflow-x-auto">
             <table className="min-w-full text-left">
               <thead className="bg-gray-200">
                 <tr>
@@ -69,7 +71,7 @@ export default async function Homepage() {
               </thead>
               <tbody>
                 {formatted.map((grant, idx: number) => (
-                  <tr key={idx} className="border-t">
+                  <tr key={idx} className="borde  r-t">
                     <td className="px-6 py-4 whitespace-nowrap">{grant.title}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{grant.amount}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{grant.openDate}</td>
