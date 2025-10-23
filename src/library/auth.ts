@@ -36,6 +36,10 @@ export const auth = betterAuth({
             disableSignUp: false,
         }),
     ],
+    user: {
+        additionalFields: {}    // If any additional User fields are needed for database, add them here (https://www.better-auth.com/docs/concepts/database#extending-core-schema)
+        // Use pnpm exec @better-auth/cli generate to update schema
+    }
 });
 
 export const protect = async () => {
