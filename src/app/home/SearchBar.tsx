@@ -23,18 +23,19 @@ export function SearchBar() {
     }*/
 
     return(
-
+        // Container for the search bar and filter button
     <div className="flex items-center gap-4 mb-6">
         <div className="bg-gray-200 shadow rounded-md overflow-x-auto w-[1200px]">
             {/* Inner container with max width and padding */}
             <div className="px-6 py-2.5">
-                {/* Div instead of form since we're not submitting anything */}
                 <div className="bg-gray-200 rounded-md">
                     <div className="flex items-center gap-2">
+                        {/* Search icon */}
                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2">
                             <circle cx="11" cy="11" r="8" />
                             <path d="m21 21-4.35-4.35" />
                         </svg>
+                        {/* Search input field */}
                         <input 
                             type="text"
                             placeholder="Search"
@@ -44,6 +45,7 @@ export function SearchBar() {
                 </div>
             </div>
         </div>
+            {/* Filter button */}
             <button className="bg-gray-200 shadow rounded-md p-3">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2">
                     <line x1="3" y1="6" x2="21" y2="6" />
