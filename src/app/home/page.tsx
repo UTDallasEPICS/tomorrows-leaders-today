@@ -1,7 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import React from 'react';
 import Navbar from "../components/Navbar";
+import GrantsTable from "./components/GrantsTable";
 import { protect } from '@/library/auth';
+
+
 
 // Define interfaces for type safety
 interface GrantApplication {
@@ -64,32 +67,7 @@ export default async function Homepage() {
       <div className="p-6 bg-gray-100 min-h-screen">
         <section className="mt-8">
           <h1 className="text-3xl font-bold mb-4">Grant Tracker</h1>
-          <div className="bg-white shadow rounded-md overflow-x-auto">
-            <table className="min-w-full text-left">
-              <thead className="bg-gray-200">
-                <tr>
-                  <th className="px-6 py-3">Title</th>
-                  <th className="px-6 py-3">Amount</th>
-                  <th className="px-6 py-3">Open Date</th>
-                  <th className="px-6 py-3">Due Date</th>
-                  <th className="px-6 py-3">Categories</th>
-                </tr>
-              </thead>
-              <tbody>
-                {formatted.map((grant, idx: number) => (
-                  <tr key={idx} className="border-t">
-                    <td className="px-6 py-4 whitespace-nowrap">{grant.title}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{grant.amount}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{grant.openDate}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{grant.dueDate}</td>
-                    <td className="px-6 py-4 flex gap-2 flex-wrap">
-                      <Tag color={grant.status[0]} label={grant.status[1]} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <GrantsTable />
         </section>
       </div>
     </>
