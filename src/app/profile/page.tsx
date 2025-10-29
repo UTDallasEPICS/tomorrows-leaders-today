@@ -6,8 +6,10 @@ import { useState } from "react";
 import GrantFields from "./components/GrantFields";
 import ProfileHeader from "./components/ProfileHeader";
 import { FoundationsContacted } from "./components/FoundationsContacted";
+import { protect } from "@/library/auth"; // useProtected if this is turned into client component
 
 export default function ProfilePage() {
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [userInfo, setUserInfo] = useState({
     fullName: "John Doe",
