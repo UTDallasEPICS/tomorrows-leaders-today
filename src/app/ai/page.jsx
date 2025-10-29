@@ -6,8 +6,11 @@ import { useState, useEffect, useRef } from "react";
 import DataBox from "../components/DataBox";
 import "./ai-response-editor.css";
 import { toast } from "react-hot-toast";
+import { useProtected } from "../hooks/useProtected";
 
 export default function AIResponseEditor() {
+  useProtected();
+
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
   const [sections, setSections] = useState([]);
@@ -68,18 +71,18 @@ export default function AIResponseEditor() {
 
   return (
     <>
-      
-  
+
+
       <div className="editor-wrapper">
-      <Navbar />
+        <Navbar />
 
         {loading && <div className="overlay-spinner">Submitting...</div>}
-  
+
         <div className={`editor-flex ${loading ? "dimmed" : ""}`}>
           {/* Left column */}
           <div className="editor-column">
             <h1 className="editor-heading">Edit AI Response</h1>
-  
+
             <div className="editor-section">
               <textarea
                 ref={textRef}
@@ -91,7 +94,7 @@ export default function AIResponseEditor() {
                 disabled={loading}
               />
             </div>
-  
+
             <div className="editor-buttons">
               <button
                 className="submit-button"
@@ -100,7 +103,7 @@ export default function AIResponseEditor() {
               >
                 {loading ? "Submitting..." : "SUBMIT"}
               </button>
-  
+
               <button
                 className="clear-button"
                 onClick={handleClear}
@@ -110,7 +113,7 @@ export default function AIResponseEditor() {
               </button>
             </div>
           </div>
-  
+
           {/* Right column */}
           <div className="sections-column">
             <h1 className="section-heading">Sections</h1>
@@ -129,5 +132,5 @@ export default function AIResponseEditor() {
       </div>
     </>
   );
-  
+
 }
