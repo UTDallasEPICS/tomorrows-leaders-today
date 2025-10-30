@@ -4,12 +4,14 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import { signOut } from "@/library/auth-client";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter(); // Interconnectivity with other pages
 
   const handleSignOut = () => {
+    signOut();
     router.push("/Login-page"); // Redirect to login page after sign out
   };
 
