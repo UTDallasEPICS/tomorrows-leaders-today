@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 type Grant = {
@@ -72,7 +72,37 @@ export default function GrantsTable() {
             setSortDirection('asc');
         }
     };
+    const sortedGrants = useMemo(() => {
+    if (!activeSort) return grants;
 
+    const sorted = [...grants].sort((a, b) => {
+      let valA = a[activeSort];
+      let valB = b[activeSort];
+
+      
+      if (activeSort === "fund") {
+        const numA = parseFloat(valA.replace(/[^0-9.]/g, ""));
+        const numB = parseFloat(valB.replace(/[^0-9.]/g, ""));
+        return sortDirection === 'asc' ? numA - numB : numB - numA;
+      }
+
+      
+      if (activeSort === "release" || activeSort === "deadline") {
+        const dateA = new Date(valA);
+        const dateB = new Date(valB);
+        return sortDirection === 'asc'
+          ? dateA.getTime() - dateB.getTime()
+          : dateB.getTime() - dateA.getTime();
+      }
+
+      
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [activeSort, sortDirection, grants]);
     const categories: { key: SortField; label: string }[] = [
         { key: 'grant', label: 'Grant' },
         { key: 'agency', label: 'Agency' },
@@ -82,82 +112,88 @@ export default function GrantsTable() {
         { key: 'status', label: 'Status' }
     ];
 
-    return (
-        <div className="bg-[#E8DCC8] rounded-lg shadow overflow-hidden">
-            <div className="grid grid-cols-6 bg-[#B89A49] text-white">
-                {categories.map(({ key, label }) => (
+      return (
+    <div className="bg-[#E8DCC8] rounded-lg shadow overflow-hidden">
+      {/* Header row with sorting buttons */}
+      <div className="grid grid-cols-6 bg-[#B89A49] text-white">
+        {categories.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => handleSort(key)}
+            className="p-3 text-left flex items-center justify-between hover:bg-opacity-80"
+          >
+            <span className={activeSort === key ? 'font-bold' : ''}>{label}</span>
+            {activeSort === key ? (
+              sortDirection === 'asc' ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronUp className="w-4 h-4" />
+              )
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Table rows */}
+      <div className="divide-y divide-gray-300">
+        {sortedGrants.map((grant, index) => {
+          const isExpanded = expandedIndex === index;
+
+          return (
+            <div key={index}>
+              <div
+                className={`grid grid-cols-6 cursor-pointer ${
+                  isExpanded ? 'bg-[#E8DCC8]' : 'bg-white hover:bg-gray-50'
+                }`}
+                onClick={() => setExpandedIndex(isExpanded ? null : index)}
+              >
+                <div className="p-3">{grant.grant}</div>
+                <div className="p-3">{grant.agency}</div>
+                <div className="p-3">{grant.release}</div>
+                <div className="p-3">{grant.deadline}</div>
+                <div className="p-3">{grant.fund}</div>
+                <div className="p-3">{grant.status}</div>
+              </div>
+
+              {/* Expanded details */}
+              {isExpanded && (
+                <div className="bg-[#E8DCC8] p-6">
+                  <div className="mb-4">
+                    <p className="font-semibold">{grant.company}</p>
+                  </div>
+                  <div className="mb-6">
+                    <p>{grant.description}</p>
+                  </div>
+                  <div className="flex justify-between items-center">
                     <button
-                        key={key}
-                        onClick={() => handleSort(key)}
-                        className="p-3 text-left flex items-center justify-between hover:bg-opacity-80"
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (grant.website) window.open(grant.website, '_blank');
+                      }}
                     >
-                        <span className={activeSort === key ? 'font-bold' : ''}>
-                            {label}
-                        </span>
-                        {activeSort === key ? (
-                            sortDirection === 'asc' ? (
-                                <ChevronDown className="w-4 h-4" />
-                            ) : (
-                                <ChevronUp className="w-4 h-4" />
-                            )
-                        ) : (
-                            <ChevronDown className="w-4 h-4" />
-                        )}
+                      Website
                     </button>
-                ))}
+                    <button
+                      className={`px-4 py-2 rounded ${
+                        grant.status !== "Available"
+                          ? "bg-gray-400 text-gray-600 cursor-not-allowed"
+                          : "bg-gray-600 text-white hover:bg-gray-700"
+                      }`}
+                      disabled={grant.status !== "Available"}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {grant.status}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="divide-y divide-gray-300">
-                {grants.map((grant, index) => {
-                    const isExpanded = expandedIndex === index;
-                    return (
-                        <div key={index}>
-                            <div
-                                className={`grid grid-cols-6 cursor-pointer ${isExpanded ? 'bg-[#E8DCC8]' : 'bg-white hover:bg-gray-50'}`}
-                                onClick={() => setExpandedIndex(isExpanded ? null : index)}
-                            >
-                                <div className="p-3">{grant.grant}</div>
-                                <div className="p-3">{grant.agency}</div>
-                                <div className="p-3">{grant.release}</div>
-                                <div className="p-3">{grant.deadline}</div>
-                                <div className="p-3">{grant.fund}</div>
-                                <div className="p-3">{grant.status}</div>
-                            </div>
-                            {isExpanded && (
-                                <div className="bg-[#E8DCC8] p-6">
-                                    <div className="mb-4">
-                                        <p className="font-semibold">{grant.company}</p>
-                                    </div>
-                                    <div className="mb-6">
-                                        <p>{grant.description}</p>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <button
-                                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (grant.website) window.open(grant.website, '_blank');
-                                            }}
-                                        >
-                                            Website
-                                        </button>
-                                        <button
-                                            className={`px-4 py-2 rounded ${
-                                                grant.status !== "Available"
-                                                    ? "bg-gray-400 text-gray-600 cursor-not-allowed"
-                                                    : "bg-gray-600 text-white hover:bg-gray-700"
-                                            }`}
-                                            disabled={grant.status !== "Available"}
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            {grant.status}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
+          );
+        })}
+      </div>
+    </div>
+  );
 }
