@@ -47,11 +47,8 @@ const Navbar = () => {
             <span className="mont-font text-white opacity-50 text-[28px] font-medium">
               |
             </span>
-            <Link
-              href="/profile"
-              className="mont-font text-[28px] font-medium text-white hover:text-[#B89A49]"
-            >
-              Profile
+            <Link href="/profile" className="flex items-center gap-2">
+              <img src="/icon.png" alt="Profile" className="h-10 w-10 rounded-full border-2 border-white" />
             </Link>
             <span className="mont-font text-white opacity-50 text-[28px] font-medium">
               |
@@ -87,11 +84,8 @@ const Navbar = () => {
             >
               AI Response Editor
             </Link>
-            <Link
-              href="/profile"
-              className="mont-font text-[24px] font-medium text-white hover:text-[#B89A49]"
-            >
-              Profile
+            <Link href="/profile" className="flex items-center gap-2">
+              <img src="/icon.png" alt="Profile" className="h-8 w-8 rounded-full border-2 border-white" />
             </Link>
             <button
               onClick={handleSignOut}
