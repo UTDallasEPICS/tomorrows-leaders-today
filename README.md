@@ -87,3 +87,25 @@ For detailed schema information, refer to `prisma/schema.prisma`.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## ChangeLog (status history)
+
+We added a `ChangeLog` model to record grant status changes. When a grant's status is updated through the UI, a ChangeLog row is created with:
+- reference to the Grant
+- reference to the User who made the change (or a system user)
+- originalStatus and newStatus
+- updatedAt timestamp
+
+To test this locally:
+1. Run migrations and generate client:
+```bash
+pnpm exec prisma migrate dev
+pnpm exec prisma generate
+```
+2. Seed mock data (creates grants + test user + change logs):
+```bash
+pnpm run seed:mock
+```
+3. Start the dev server and open the Grant Tracker. The status dropdown in the Grant table updates the grant and records ChangeLog entries:
+```bash
+pnpm run dev
+```
