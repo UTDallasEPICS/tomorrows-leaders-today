@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import React from 'react';
 import Navbar from "../components/Navbar";
+import dynamic from 'next/dynamic';
+const GrantStatusEditor = dynamic(() => import('../components/GrantStatusEditor'), { ssr: false });
 
 // Define interfaces for type safety
 interface Timeline {
@@ -21,6 +23,8 @@ interface FormattedGrant {
   openDate: string;
   dueDate: string;
   categories: [string, string][];
+  id?: number;
+  status?: string;
 }
 
 const prisma = new PrismaClient();
@@ -43,6 +47,8 @@ export default async function Homepage() {
     const close = grant.timelines.find((e: Timeline) => e.eventType === 'closes');
     return {
       title: grant.title,
+      id: grant.id,
+      status: grant.status,
       amount: '$ TBD',
       openDate: open?.eventDate?.toISOString().split('T')[0] ?? 'N/A',
       dueDate: close?.eventDate?.toISOString().split('T')[0] ?? 'N/A',
@@ -61,6 +67,7 @@ export default async function Homepage() {
               <thead className="bg-gray-200">
                 <tr>
                   <th className="px-6 py-3">Title</th>
+                          <th className="px-6 py-3">Status</th>
                   <th className="px-6 py-3">Amount</th>
                   <th className="px-6 py-3">Open Date</th>
                   <th className="px-6 py-3">Due Date</th>
@@ -70,7 +77,8 @@ export default async function Homepage() {
               <tbody>
                 {formatted.map((grant, idx: number) => (
                   <tr key={idx} className="border-t">
-                    <td className="px-6 py-4 whitespace-nowrap">{grant.title}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">{grant.title}</td>
+                            <td className="px-6 py-4 whitespace-nowrap"><GrantStatusEditor grantId={grant['id'] ?? 0} currentStatus={grant['status']} /></td>
                     <td className="px-6 py-4 whitespace-nowrap">{grant.amount}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{grant.openDate}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{grant.dueDate}</td>
