@@ -9,22 +9,26 @@ import axios from 'axios';
  * @returns {Promise<Array>} - Array of grant objects with summary info and detail URL.
  */
 
-export async function grantScraper(query, rows = 20) {
+export async function grantScraper(query, rows = 500) {
     const endpoint = 'https://apply07.grants.gov/grantsws/rest/opportunities/search';
 
     // Capture exact body shape from your browser's DevTools that matches request payloads.
     const body = {
-
-        keyword: query, // e.g. "Mind, Machine and Motor Nexus"
-        cfda: null,
-        agency: null,
-        fundingCategories: null,
-        fundingInstruments: null,
-        eligibilities: null,
-        oppStatuses: "forecased|posted", // includes both forecasted and posted
-        sortBy: "openDate|desc", //default sort
-        rows, // up to 5000
-        dateRange: "" // leave empty for no date filter
+        "keyword": "department of education", // e.g. "leadership"
+        "keywordEncoded": true,
+        "resultType": "application",
+        "searchOnly": false,
+        "oppNum": "",
+        "cfda": null,
+        "sortBy": "", // "" for default sort
+        "dateRange": "", // "" for all dates
+        "oppStatuses": "forecasted|posted|closed|archived",
+        "startRecordNum": 0,
+        "eligibilities": null,
+        "fundingInstruments": "G", // "G" for grants
+        "fundingCategories": null,
+        "agencies": null,
+        "rows": rows,
     };
 
     const { data } = await axios.post(endpoint, body, {
@@ -39,6 +43,7 @@ export async function grantScraper(query, rows = 20) {
     console.log("Number of grants in this page:", data.oppHits.length);
 
     // Map each grant to include the detail page URL
+    list.forEach(opp => console.log(opp));
     return list.map(opp => ({
         id: opp.id,
         number: opp.number,
