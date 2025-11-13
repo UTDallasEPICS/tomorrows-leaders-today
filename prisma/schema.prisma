@@ -36,6 +36,7 @@ model Grant {
   contacts     Contact[]
   stipulations GrantStipulation[]
   fundingLinks GrantFunding[]
+  changeLogs   ChangeLog[]
 }
 
 model GrantTimeline {
@@ -97,4 +98,26 @@ model GrantFunding {
   funding FundingOpportunity @relation(fields: [fundingId], references: [id], onDelete: Cascade)
 
   @@id([grantId, fundingId])
+}
+
+// Simple User model for tracking who makes changes. If you already
+// have a more complete User model elsewhere, replace or extend this.
+model User {
+  id        Int     @id @default(autoincrement())
+  email     String  @unique
+  name      String?
+  // relation to change logs
+  changeLogs ChangeLog[]
+}
+
+// ChangeLog records status changes for Grants
+model ChangeLog {
+  id             Int      @id @default(autoincrement())
+  grantId        Int
+  grant          Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  originalStatus String?
+  newStatus      String?
+  updatedAt      DateTime @default(now())
 }

@@ -10,7 +10,8 @@
     "lint": "next lint",
     "generate": "prisma generate",
     "scrape": "node src/runScrape.js",
-    "seed": "node scripts/seedGrant.js"
+  "seed": "node scripts/seedGrant.js",
+  "seed:mock": "node scripts/seedMockData.js"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",
@@ -27,8 +28,8 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@types/node": "^20",
-    "@types/react": "^19",
+    "@types/node": "^20.19.17",
+    "@types/react": "^19.1.13",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
     "csstype": "^3.1.3",
