@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Info, X } from 'lucide-react';
 
 type StatusUpdate = {
@@ -50,6 +50,41 @@ export default function SubmittedGrantsTable({ grants }: SubmittedGrantsTablePro
         }
     };
 
+    // Sort grants based on active sort field and direction
+    const sortedGrants = useMemo(() => {
+        if (!activeSort) return grants;
+
+        return [...grants].sort((a, b) => {
+            let compareResult = 0;
+
+            switch (activeSort) {
+                case 'grant':
+                    compareResult = a.grant.localeCompare(b.grant);
+                    break;
+                case 'agency':
+                    compareResult = a.agency.localeCompare(b.agency);
+                    break;
+                case 'release':
+                    compareResult = new Date(a.release).getTime() - new Date(b.release).getTime();
+                    break;
+                case 'deadline':
+                    compareResult = new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+                    break;
+                case 'fund':
+                    // Extract numeric value from fund string (e.g., "$175,000" -> 175000)
+                    const aFund = parseFloat(a.fund.replace(/[$,]/g, ''));
+                    const bFund = parseFloat(b.fund.replace(/[$,]/g, ''));
+                    compareResult = aFund - bFund;
+                    break;
+                case 'status':
+                    compareResult = a.status.localeCompare(b.status);
+                    break;
+            }
+
+            return sortDirection === 'asc' ? compareResult : -compareResult;
+        });
+    }, [grants, activeSort, sortDirection]);
+
     const categories: { key: SortField; label: string }[] = [
         { key: 'grant', label: 'Grant' },
         { key: 'agency', label: 'Agency' },
@@ -84,7 +119,7 @@ export default function SubmittedGrantsTable({ grants }: SubmittedGrantsTablePro
                 ))}
             </div>
             <div className="divide-y divide-gray-300">
-                {grants.map((grant, index) => {
+                {sortedGrants.map((grant, index) => {
                     const isExpanded = expandedIndex === index;
                     return (
                         <div key={index}>
