@@ -57,6 +57,7 @@ scraper["grants.gov"] = async (query, rows = 500) => {
 
     // Map each grant to include the detail page URL
     // list.forEach(opp => console.log(opp));
+    // list.forEach(opp => console.log(opp));
     return list.map(opp => ({
         id: opp.id,
         number: opp.number,
