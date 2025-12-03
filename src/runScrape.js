@@ -1,5 +1,5 @@
 // npm run scrape in terminal to launch scraping script.
-import { grantScraper } from './library/grantScraper.js';
+import grantScraper from './library/grantScraper.js';
 import { PrismaClient, Prisma } from "@prisma/client";
 const prisma = new PrismaClient();
 
@@ -69,27 +69,22 @@ Not currently needed but could be useful if attempting to search for websites th
 async function run() {
   // const keyword = "" + KEYWORDS.join(" ") + "";
 
+  // Loop over all supported websites and run scrapers
+
   const keyword = "";
   console.log(`Running scrape with keyword: "${keyword}"`);
-  const grants = await grantScraper(keyword, 3);
-  console.log(`Found ${grants.length} opportunities:`);
 
-  // Print matches
-  // try {
-  //   grants.forEach((g, i) => {
-  //     console.log(`${i + 1}. ID: [${g.id}]`);
-  //     console.log(`   Title: ${g.title}`);
-  //     console.log(`   Agency: ${g.agency}`);
-  //     console.log(`   Status: ${g.status}`);
-  //     console.log(`   Posted: ${g.postedDate}`);
-  //     console.log(`   Closes: ${g.closeDate}`);
-  //     console.log(`   URL: ${g.url}\n`);
-  //   });
-  // } catch (err) {
-  //   console.error('Error fetching grants:', err.message);
-  // }
+  const grants = [];
 
-  // Batch create grants in database
+  for (let src in grantScraper) {
+    console.log(`Scraping from ${src}...`);
+    const res = await grantScraper[src](keyword);
+    console.log(`Found ${res.length} opportunities from ${src}.`);
+    grants.push(...res);
+  }
+  console.log(`Inserting ${grants.length} total opportunities into database...`);
+
+  // Iteratively create grants in database
   try {
     const newEntries = grants.map((g, i) => {
       return {
@@ -117,11 +112,13 @@ async function run() {
           },
           create: e
         });
-        console.log("Upserted grant:", e.opportunityNumber);
+        // console.log("Upserted grant:", e.opportunityNumber);
       } catch (err) {
-        console.error(`Error upserting grant ${e.opportunityNumber}:`, err.message);
+        return;
+        // console.error(`Error upserting grant ${e.opportunityNumber}:`, err.message);
       }
     });
+    console.log("Finished processing all grants.");
 
     // For batched requests
     // const newEntries = grants.map((g, i) => {
