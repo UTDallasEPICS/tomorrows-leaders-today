@@ -43,5 +43,6 @@ next-env.d.ts
 
 # databases
 **/*.db
+prisma/dev.db
 **/*.sqlite
 **/*.db-journal

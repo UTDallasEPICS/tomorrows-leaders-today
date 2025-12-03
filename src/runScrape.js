@@ -1,5 +1,7 @@
 // npm run scrape in terminal to launch scraping script.
 import { grantScraper } from './library/grantScraper.js';
+import { PrismaClient, Prisma } from "@prisma/client";
+const prisma = new PrismaClient();
 
 const KEYWORDS = [ // Keywords that scraping will filter results by
   "leadership training",
@@ -69,24 +71,70 @@ async function run() {
 
   const keyword = "";
   console.log(`Running scrape with keyword: "${keyword}"`);
-  const grants = await grantScraper(keyword, 500);
+  const grants = await grantScraper(keyword, 3);
   console.log(`Found ${grants.length} opportunities:`);
 
+  // Print matches
+  // try {
+  //   grants.forEach((g, i) => {
+  //     console.log(`${i + 1}. ID: [${g.id}]`);
+  //     console.log(`   Title: ${g.title}`);
+  //     console.log(`   Agency: ${g.agency}`);
+  //     console.log(`   Status: ${g.status}`);
+  //     console.log(`   Posted: ${g.postedDate}`);
+  //     console.log(`   Closes: ${g.closeDate}`);
+  //     console.log(`   URL: ${g.url}\n`);
+  //   });
+  // } catch (err) {
+  //   console.error('Error fetching grants:', err.message);
+  // }
+
+  // Batch create grants in database
   try {
-    grants.forEach((g, i) => {
-      console.log(`${i + 1}. ID: [${g.id}]`);
-      console.log(`   Title: ${g.title}`);
-      console.log(`   Agency: ${g.agency}`);
-      console.log(`   Status: ${g.status}`);
-      console.log(`   Posted: ${g.postedDate}`);
-      console.log(`   Closes: ${g.closeDate}`);
-      console.log(`   URL: ${g.url}\n`);
+    const newEntries = grants.map((g, i) => {
+      return {
+        opportunityNumber: g.number,
+        title: g.title,
+        agency: g.agency,
+        applicationLink: g.url,
+        applicationType: "Application",
+        openingDate: new Date(g.postedDate),
+        closingDate: new Date(g.closeDate)
+      };
     });
+
+    newEntries.forEach(async e => {
+      try {
+        await prisma.grant.upsert({
+          where: { opportunityNumber: e.opportunityNumber },
+          update: {
+            title: e.title,
+            agency: e.agency,
+            applicationLink: e.applicationLink,
+            applicationType: e.applicationType,
+            openingDate: e.openingDate,
+            closingDate: e.closingDate
+          },
+          create: e
+        });
+        console.log("Upserted grant:", e.opportunityNumber);
+      } catch (err) {
+        console.error(`Error upserting grant ${e.opportunityNumber}:`, err.message);
+      }
+    });
+
+    // For batched requests
+    // const newEntries = grants.map((g, i) => {
+    //   return [g.number, g.title, g.agency, g.url, "Application", new Date(g.postedDate), new Date(g.closeDate), new Date(Date.now())];
+    // }).map(e => Prisma.sql`(${Prisma.join(e)})`);
+
+    // // Raw SQL because Prisma createMany does not support ON CONFLICT DO NOTHING
+    // await prisma.$executeRaw`INSERT INTO Grant (opportunityNumber, title, agency, applicationLink, applicationType, openingDate, closingDate, updatedAt) VALUES ${Prisma.join(newEntries, ",\n")} ON CONFLICT (opportunityNumber) DO NOTHING;`;
+
+  } catch (e) {
+    console.warn(e);
   }
 
-  catch (err) {
-    console.error('Error fetching grants:', err.message);
-  }
 }
 
 run();

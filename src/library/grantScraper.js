@@ -10,6 +10,23 @@ import axios from 'axios';
  */
 
 export async function grantScraper(query, rows = 500) {
+    /** 
+     * Get up to <rows> unique grants that match <query>
+     * 
+     * @param query keyword to search by
+     * @param rows maximum number of resulting grants
+     * 
+     * @returns list of grant entries [{
+     *  id: id of grant
+     *  number: opportunity #
+     *  title: name of grant
+     *  agency: agency that gives the grant
+     *  status: closed|open|archived
+     *  postedDate: date that grant application opens
+     *  closeDate: date that grant application closes
+     *  url: link to grant
+     * }]
+    */
     const endpoint = 'https://apply07.grants.gov/grantsws/rest/opportunities/search';
 
     // Capture exact body shape from your browser's DevTools that matches request payloads.
@@ -43,7 +60,7 @@ export async function grantScraper(query, rows = 500) {
     console.log("Number of grants in this page:", data.oppHits.length);
 
     // Map each grant to include the detail page URL
-    list.forEach(opp => console.log(opp));
+    // list.forEach(opp => console.log(opp));
     return list.map(opp => ({
         id: opp.id,
         number: opp.number,
@@ -52,7 +69,6 @@ export async function grantScraper(query, rows = 500) {
         status: opp.oppStatus,
         postedDate: opp.openDate,
         closeDate: opp.closeDate,
-        synopsis: opp.synopsis,
         url: 'https://grants.gov/search-results-detail/' + opp.id,
     }));
 }
