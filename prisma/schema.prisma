@@ -73,7 +73,7 @@ model GrantApplication {
   grantId         Int
   accountId       Int
   applicationDate DateTime @default(now())
-  status          String   @default("Not Applied")
+  status          ApplicationStatus @default(NOT_APPLIED)
   grant           Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
   account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   User            User?    @relation(fields: [userId], references: [id])
@@ -133,4 +133,16 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt
 
   @@map("verification")
+}
+
+enum ApplicationStatus {
+  LOI
+  WAITING_FOR_FEEDBACK
+  APPROVED
+  DECLINED
+  NOT_QUALIFIED
+  AVAILABLE
+  IN_PROGRESS
+  APPLIED
+  NOT_APPLIED
 }
