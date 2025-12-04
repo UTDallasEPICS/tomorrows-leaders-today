@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
-import { signOut } from "@/library/auth-client";
+import { signOut, useSession } from "@/library/auth-client";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,6 +15,21 @@ const Navbar = () => {
     signOut();
     router.push("/Login-page");
   };
+
+  const session = useSession();
+
+  // dropdown state and outside-click handling
+  const [showDropdown, setShowDropdown] = useState(false);
+  const avatarRef = useRef(null);
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!avatarRef.current) return;
+      if (!avatarRef.current.contains(e.target)) setShowDropdown(false);
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, []);
 
   const getLinkClassName = (path) => {
     const baseClasses = "mont-font text-[28px] font-medium transition-colors";
@@ -64,12 +79,40 @@ const Navbar = () => {
             <span className="mont-font text-white opacity-50 text-[28px] font-medium">
               |
             </span>
-            <button
-              onClick={handleSignOut}
-              className="mont-font text-[28px] font-medium text-white hover:text-[#B89A49]"
-            >
-              Sign Out
-            </button>
+            {/* Profile avatar */}
+            <div className="relative" ref={avatarRef}>
+              <button
+                onClick={() => setShowDropdown((s) => !s)}
+                className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden"
+                aria-haspopup="true"
+                aria-expanded={showDropdown}
+              >
+                {session?.data?.user?.image ? (
+                  <img src={session.data.user.image} alt="avatar" className="w-8 h-8 object-cover" />
+                ) : (
+                  <span className="text-sm text-white">{(session?.data?.user?.name || 'U').split(' ').map(n=>n[0]).join('').slice(0,2)}</span>
+                )}
+              </button>
+
+              {showDropdown && (
+                <div
+                  className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-md ring-1 ring-black/5 z-50 transform transition ease-out duration-150 origin-top-right"
+                  style={{ animation: 'dropdown-appear 140ms ease-out' }}
+                >
+                  <ul className="py-1">
+                    <li>
+                      <Link href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</Link>
+                    </li>
+                    <li>
+                      <Link href="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</Link>
+                    </li>
+                    <li>
+                      <button onClick={handleSignOut} className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign Out</button>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
 
           <button
@@ -120,6 +163,10 @@ const Navbar = () => {
 
         .mont-font {
           font-family: 'Montserrat', sans-serif;
+        }
+        @keyframes dropdown-appear {
+          from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
     </>
