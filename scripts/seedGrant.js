@@ -51,9 +51,25 @@ const grants = [
 ];
 
 async function seed() {
+  // Ensure a SYSTEM user exists for logs
+  let systemUser = await prisma.user.findUnique({
+    where: { id: "SYSTEM" }
+  });
+
+  if (!systemUser) {
+    systemUser = await prisma.user.create({
+      data: {
+        id: "SYSTEM",
+        name: "System",
+        email: "system@tlt.internal",
+        emailVerified: true
+      }
+    });
+  }
+
   for (const grant of grants) {
     const existing = await prisma.grant.findUnique({
-      where: { externalId: grant.external_id }
+      where: { opportunityNumber: grant.external_id }
     });
 
     if (existing) {
@@ -61,47 +77,40 @@ async function seed() {
       continue;
     }
 
-    const created = await prisma.grant.create({
+    // Create Grant
+    const createdGrant = await prisma.grant.create({
       data: {
-        externalId: grant.external_id,
+        opportunityNumber: grant.external_id,
         title: grant.title,
-        status: grant.status,
-        website: grant.url,
+        agency: grant.agency,
+        openingDate: new Date(grant.posted),
+        closingDate: new Date(grant.closes),
+        applicationLink: grant.url,
       }
     });
 
-    await prisma.grantTimeline.createMany({
-      data: [
-        {
-          grantId: created.id,
-          eventType: 'posted',
-          eventDate: new Date(grant.posted)
-        },
-        {
-          grantId: created.id,
-          eventType: 'closes',
-          eventDate: new Date(grant.closes)
-        }
-      ]
-    });
+    console.log(`✅ Seeded: ${createdGrant.title}`);
 
-    const funding = await prisma.fundingOpportunity.create({
+    // Create Log entries for this grant
+    await prisma.log.create({
       data: {
-        name: grant.title,
-        source: grant.agency,
-        website: grant.url,
-        applicationDeadline: new Date(grant.closes)
+        grantId: createdGrant.id,
+        userId: "SYSTEM",
+        originalStatus: null,
+        newStatus: "posted"
       }
     });
 
-    await prisma.grantFunding.create({
+    await prisma.log.create({
       data: {
-        grantId: created.id,
-        fundingId: funding.id
+        grantId: createdGrant.id,
+        userId: "SYSTEM",
+        originalStatus: "posted",
+        newStatus: "imported"
       }
     });
 
-    console.log(`✅ Seeded: ${grant.title}`);
+    console.log(`📝 Logs created for: ${createdGrant.title}`);
   }
 
   await prisma.$disconnect();
