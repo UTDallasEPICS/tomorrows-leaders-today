@@ -2,15 +2,32 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import { signOut } from "@/library/auth-client";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter(); // Interconnectivity with other pages
+  const router = useRouter();
+  const pathname = usePathname();
 
   const handleSignOut = () => {
-    router.push("/Login-page"); // Redirect to login page after sign out
+    signOut();
+    router.push("/Login-page");
+  };
+
+  const getLinkClassName = (path) => {
+    const baseClasses = "mont-font text-[28px] font-medium transition-colors";
+    return `${baseClasses} ${
+      pathname === path ? "text-[#B89A49]" : "text-white hover:text-[#B89A49]"
+    }`;
+  };
+
+  const getMobileLinkClassName = (path) => {
+    const baseClasses = "mont-font text-[24px] font-medium";
+    return `${baseClasses} ${
+      pathname === path ? "text-[#B89A49]" : "text-white hover:text-[#B89A49]"
+    }`;
   };
 
   return (
@@ -31,7 +48,7 @@ const Navbar = () => {
           <div className="hidden md:flex gap-4 items-center">
             <Link
               href="/home"
-              className="mont-font text-[28px] font-medium text-white hover:text-[#B89A49]"
+              className={getLinkClassName("/home")}
             >
               Grant Tracker
             </Link>
@@ -39,19 +56,10 @@ const Navbar = () => {
               |
             </span>
             <Link
-              href="/ai"
-              className="mont-font text-[28px] font-medium text-white hover:text-[#B89A49]"
+              href="/history"
+              className={getLinkClassName("/history")}
             >
-              AI Response Editor
-            </Link>
-            <span className="mont-font text-white opacity-50 text-[28px] font-medium">
-              |
-            </span>
-            <Link
-              href="/profile"
-              className="mont-font text-[28px] font-medium text-white hover:text-[#B89A49]"
-            >
-              Profile
+              History
             </Link>
             <span className="mont-font text-white opacity-50 text-[28px] font-medium">
               |
@@ -77,21 +85,15 @@ const Navbar = () => {
           <div className="md:hidden mt-4 flex flex-col gap-2">
             <Link
               href="/home"
-              className="mont-font text-[24px] font-medium text-white hover:text-[#B89A49]"
+              className={getMobileLinkClassName("/home")}
             >
               Grant Tracker
             </Link>
             <Link
-              href="/ai"
-              className="mont-font text-[24px] font-medium text-white hover:text-[#B89A49]"
+              href="/history"
+              className={getMobileLinkClassName("/history")}
             >
-              AI Response Editor
-            </Link>
-            <Link
-              href="/profile"
-              className="mont-font text-[24px] font-medium text-white hover:text-[#B89A49]"
-            >
-              Profile
+              History
             </Link>
             <button
               onClick={handleSignOut}

@@ -8,59 +8,141 @@ datasource db {
 }
 
 model Account {
-  id             Int      @id @default(autoincrement())
-  fullName       String
-  email          String   @unique
-  phone          String
-  applications   GrantApplication[]
+  id                    Int                @id @default(autoincrement())
+  email                 String             @unique
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  GrantApplication      GrantApplication[]
+
+  @@map("account")
 }
 
 model Grant {
-  id                Int       @id @default(autoincrement())
-  opportunityNumber String    @unique
-  title             String
-  agency            String?
-  openingDate       DateTime?
-  closingDate       DateTime?
-  applicationType         String?   
-  category          String?
-  applicationLink   String?
-  awardFloor        Float?
-  awardCeiling      Float?
-  totalFundingAmount  Float?
+  id                 Int       @id @default(autoincrement())
+  opportunityNumber  String    @unique
+  title              String
+  agency             String?
+  openingDate        DateTime?
+  closingDate        DateTime?
+  applicationType    String?
+  category           String?
+  applicationLink    String?
+  awardFloor         Float?
+  awardCeiling       Float?
+  totalFundingAmount Float?
 
-  contacts          GrantContact[]
+  contacts           GrantContact[]
   assistanceListings AssistanceListing[]
-  applications      GrantApplication[]
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  applications       GrantApplication[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  logs               Log[]
 }
 
 model GrantContact {
-  id        Int    @id @default(autoincrement())
-  grantId   Int
-  grant     Grant  @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  name      String?
-  email     String?
-  phone     String?
+  id      Int     @id @default(autoincrement())
+  grantId Int
+  grant   Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  name    String?
+  email   String?
+  phone   String?
 }
 
 model AssistanceListing {
-  id      Int    @id @default(autoincrement())
+  id      Int     @id @default(autoincrement())
   grantId Int
-  grant   Grant  @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  code    String 
+  grant   Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  code    String
   name    String
   link    String?
 }
 
 model GrantApplication {
-  id           Int      @id @default(autoincrement())
-  grantId      Int
-  accountId    Int
-  applicationDate    DateTime @default(now())
-  status       String   @default("Not Applied") 
-  
-  grant   Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  id              Int      @id @default(autoincrement())
+  grantId         Int
+  accountId       Int
+  applicationDate DateTime @default(now())
+  status          ApplicationStatus @default(NOT_APPLIED)
+  grant           Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  User            User?    @relation(fields: [userId], references: [id])
+  userId          String?
+}
+
+model User {
+  id            String             @id
+  name          String
+  email         String
+  emailVerified Boolean            @default(false)
+  image         String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @default(now()) @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  applications  GrantApplication[]
+  logs          Log[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Log {
+  id             Int      @id @default(autoincrement())
+  grantId        Int
+  userId         String
+  originalStatus String?
+  newStatus      String
+  updatedAt      DateTime @default(now())
+
+  grant Grant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
+
+enum ApplicationStatus {
+  LOI
+  WAITING_FOR_FEEDBACK
+  APPROVED
+  DECLINED
+  NOT_QUALIFIED
+  AVAILABLE
+  IN_PROGRESS
+  APPLIED
+  NOT_APPLIED
 }
