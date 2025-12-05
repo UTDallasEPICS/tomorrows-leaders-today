@@ -5,6 +5,7 @@ import GrantsTable from "./components/GrantsTable";
 import { protect } from '@/library/auth';
 
 
+import { SearchBar} from "./SearchBar";
 
 // Define interfaces for type safety
 interface GrantApplication {
@@ -67,7 +68,9 @@ export default async function Homepage() {
       <div className="p-6 bg-gray-100 min-h-screen">
         <section className="mt-8">
           <h1 className="text-3xl font-bold mb-4">Grant Tracker</h1>
+          <SearchBar />
           <GrantsTable />
+        
         </section>
       </div>
     </>
