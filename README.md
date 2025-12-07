@@ -87,3 +87,10 @@ For detailed schema information, refer to `prisma/schema.prisma`.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## Third Party Integrations 
+
+Google Authentication
+
+This project uses Google as its third-party authentication provider.
+Users sign in using their Google accounts, and the system verifies identity using Google OAuth. This ensures a secure, reliable login experience without storing passwords directly in the application.
+
