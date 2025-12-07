@@ -92,5 +92,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 Google Authentication
 
 This project uses Google as its third-party authentication provider.
-Users sign in using their Google accounts, and the system verifies identity using Google OAuth. This ensures a secure, reliable login experience without storing passwords directly in the application.
-
+Instead of traditional OAuth flows, it uses Google’s modern Identity Services, which offer stronger security and simplified token handling. Users sign in with their Google accounts, and authentication is verified directly through Google-issued tokens, ensuring a secure, reliable login experience without storing passwords in the application.
