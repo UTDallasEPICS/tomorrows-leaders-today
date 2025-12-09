@@ -82,6 +82,30 @@ export default function GrantsTable() {
     { key: "status", label: "Status" },
   ] as { key: SortField; label: string }[];
 
+  const sortedGrants = [...grants].sort((a, b) => {
+  if (!activeSort) return 0;
+
+  let valA: string = String(a[activeSort] ?? "");
+  let valB: string = String(b[activeSort] ?? "");
+
+  if (activeSort === "release" || activeSort === "deadline") {
+    const numA = valA === "N/A" ? 0 : new Date(valA).getTime();
+    const numB = valB === "N/A" ? 0 : new Date(valB).getTime();
+    return sortDirection === "asc" ? numA - numB : numB - numA;
+  }
+
+  if (activeSort === "fund") {
+    const numA = valA === "N/A" ? 0 : Number(valA.replace(/[$,]/g, ""));
+    const numB = valB === "N/A" ? 0 : Number(valB.replace(/[$,]/g, ""));
+    return sortDirection === "asc" ? numA - numB : numB - numA;
+  }
+
+  const cmp = valA.localeCompare(valB);
+  return sortDirection === "asc" ? cmp : -cmp;
+});
+
+
+
   return (
     <div className="bg-[#E8DCC8] rounded-lg shadow overflow-hidden">
       <div className="grid grid-cols-6 bg-[#B89A49] text-white">
@@ -115,7 +139,7 @@ export default function GrantsTable() {
       </div>
 
       <div className="divide-y divide-gray-300">
-        {grants.map((grant, index) => {
+        {sortedGrants.map((grant, index) => {
           const isExpanded = expandedIndex === index;
 
           return (
