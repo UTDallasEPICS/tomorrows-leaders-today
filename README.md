@@ -45,7 +45,7 @@ pnpm install
 ```bash
 cp .env.example .env
 ```
-Edit `.env.local` with your database credentials and other configuration.
+Edit `.env.local` with your database and better auth credentials.
 
 4. Generate the Prisma client
 ```bash
@@ -86,4 +86,3 @@ For detailed schema information, refer to `prisma/schema.prisma`.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-

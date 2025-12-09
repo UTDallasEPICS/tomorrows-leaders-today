@@ -7,94 +7,142 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model GrantCategory {
-  id             Int     @id @default(autoincrement())
-  name           String
-  description    String?
-  definitionLink String?
-  grants         Grant[]
+model Account {
+  id                    Int                @id @default(autoincrement())
+  email                 String             @unique
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  GrantApplication      GrantApplication[]
+
+  @@map("account")
 }
 
 model Grant {
-  id                Int      @id @default(autoincrement())
-  externalId        String   @unique
-  title             String
-  description       String?
-  status            String?
-  website           String?
-  awardDetails      String?
-  interviewRequired Boolean  @default(false)
-  rollingBasis      Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 Int       @id @default(autoincrement())
+  opportunityNumber  String    @unique
+  title              String
+  agency             String?
+  openingDate        DateTime?
+  closingDate        DateTime?
+  applicationType    String?
+  category           String?
+  applicationLink    String?
+  awardFloor         Float?
+  awardCeiling       Float?
+  totalFundingAmount Float?
 
-  categoryId Int?
-  category   GrantCategory? @relation(fields: [categoryId], references: [id])
-
-  timelines    GrantTimeline[]
-  requirements ApplicationRequirement[]
-  contacts     Contact[]
-  stipulations GrantStipulation[]
-  fundingLinks GrantFunding[]
+  contacts           GrantContact[]
+  assistanceListings AssistanceListing[]
+  applications       GrantApplication[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  logs               Log[]
 }
 
-model GrantTimeline {
-  id        Int      @id @default(autoincrement())
-  grantId   Int
-  grant     Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  eventType String
-  eventDate DateTime
-  details   String?
+model GrantContact {
+  id      Int     @id @default(autoincrement())
+  grantId Int
+  grant   Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  name    String?
+  email   String?
+  phone   String?
 }
 
-model ApplicationRequirement {
-  id           Int     @id @default(autoincrement())
-  grantId      Int
-  grant        Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  eligibility  String?
-  materials    String?
-  instructions String?
-  notes        String?
+model AssistanceListing {
+  id      Int     @id @default(autoincrement())
+  grantId Int
+  grant   Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  code    String
+  name    String
+  link    String?
 }
 
-model Contact {
-  id           Int     @id @default(autoincrement())
-  grantId      Int
-  grant        Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  contactType  String?
-  contactInfo  String?
-  availability String?
+model GrantApplication {
+  id              Int      @id @default(autoincrement())
+  grantId         Int
+  accountId       Int
+  applicationDate DateTime @default(now())
+  status          ApplicationStatus @default(NOT_APPLIED)
+  grant           Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  User            User?    @relation(fields: [userId], references: [id])
+  userId          String?
 }
 
-model GrantStipulation {
-  id        Int     @id @default(autoincrement())
-  grantId   Int
-  grant     Grant   @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  condition String?
-  notes     String?
+model User {
+  id            String             @id
+  name          String
+  email         String
+  emailVerified Boolean            @default(false)
+  image         String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @default(now()) @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  applications  GrantApplication[]
+  logs          Log[]
+
+  @@unique([email])
+  @@map("user")
 }
 
-model FundingOpportunity {
-  id                  Int       @id @default(autoincrement())
-  name                String
-  description         String?
-  source              String?
-  totalFundingAmount  Float?
-  maxAwardAmount      Float?
-  applicationDeadline DateTime?
-  website             String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+model Log {
+  id             Int      @id @default(autoincrement())
+  grantId        Int
+  userId         String
+  originalStatus String?
+  newStatus      String
+  updatedAt      DateTime @default(now())
 
-  grants GrantFunding[]
+  grant Grant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model GrantFunding {
-  grantId   Int
-  fundingId Int
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  grant   Grant              @relation(fields: [grantId], references: [id], onDelete: Cascade)
-  funding FundingOpportunity @relation(fields: [fundingId], references: [id], onDelete: Cascade)
+  @@unique([token])
+  @@map("session")
+}
 
-  @@id([grantId, fundingId])
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
+
+enum ApplicationStatus {
+  LOI
+  WAITING_FOR_FEEDBACK
+  APPROVED
+  DECLINED
+  NOT_QUALIFIED
+  AVAILABLE
+  IN_PROGRESS
+  APPLIED
+  NOT_APPLIED
 }
