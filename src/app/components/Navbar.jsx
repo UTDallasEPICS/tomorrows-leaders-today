@@ -101,12 +101,6 @@ const Navbar = () => {
                 >
                   <ul className="py-1">
                     <li>
-                      <Link href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</Link>
-                    </li>
-                    <li>
-                      <Link href="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</Link>
-                    </li>
-                    <li>
                       <button onClick={handleSignOut} className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign Out</button>
                     </li>
                   </ul>
