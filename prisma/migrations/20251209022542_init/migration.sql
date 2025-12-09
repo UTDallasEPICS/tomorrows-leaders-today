@@ -61,7 +61,7 @@ CREATE TABLE "GrantApplication" (
     "grantId" INTEGER NOT NULL,
     "accountId" INTEGER NOT NULL,
     "applicationDate" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "status" TEXT NOT NULL DEFAULT 'Not Applied',
+    "status" TEXT NOT NULL DEFAULT 'NOT_APPLIED',
     "userId" TEXT,
     CONSTRAINT "GrantApplication_grantId_fkey" FOREIGN KEY ("grantId") REFERENCES "Grant" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "GrantApplication_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "account" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
