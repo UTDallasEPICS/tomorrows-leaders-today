@@ -3,6 +3,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
+// Stores URL-function pairs, detailing ways to specifically scrape websites.
 const scraper = {};
 
 scraper["grants.gov"] = async (query, rows = 500) => {
@@ -82,7 +83,7 @@ scraper["mott.org"] = async (query, rows = 100) => {
      *  title: name of grant
      *  agency: agency that gives the grant
      *  status: closed|open|archived
-     *  postedDate: date that grant application opens
+     *  postedDate: date that grant application opens 
      *  closeDate: date that grant application closes
      *  amount: funding amount of grant per recipient
      *  url: link to grant
@@ -104,13 +105,15 @@ scraper["mott.org"] = async (query, rows = 100) => {
             const data = await axios.get(`${searchUrl}&pg=${page}`);
             const $ = cheerio.load(data.data);
 
+            // What does this function do for each ".card6"-class element?
             $('.card6').each((_, el) => {
                 if (grants.length >= rows) return false;
+                
                 const title = $(el).find('a > span').text().trim();
                 let url = $(el).find('a').attr('href');
                 url = url.substring(0, url.length - 1); // remove trailing slash
+                
                 // Get opportunity number from URL
-
                 const opp = url.substring(url.lastIndexOf('/') + 1).replaceAll("-", "");
                 const sponsor = $(el).find('div > p.card6-subtitle').text().trim();
                 const amount = parseInt($(el).find('div > p.card6-amount').text().trim().replaceAll(",", "").substring(1));
@@ -142,6 +145,21 @@ scraper["mott.org"] = async (query, rows = 100) => {
         console.warn("Error fetching mott.org grants:", e);
     }
     return [];
+}
+
+scraper["txsmartbuy.gov"] = async (query, rows = 100) => {
+    const searchUrl = `https://www.txsmartbuy.gov/esbd-grants?&keyword=${encodeURIComponent(query)}`;
+
+    // Get page count
+    const results = axios.get(searchUrl);
+    const $ = cheerio.load(results.data);
+    const pageCount = $("p.global-views-pagination-count");
+    if (pageCount.length === 0) {
+        pageCount = 0;
+    } else {
+        const tokens = pageCount.text().match(/\S+/g) || [];
+        pageCount = tokens[tokens.length - 2];
+    }
 }
 
 export default scraper;
