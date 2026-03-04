@@ -2,6 +2,7 @@
 
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { Brackets } from 'lucide-react';
 
 // Stores URL-function pairs, detailing ways to specifically scrape websites.
 const scraper = {};
@@ -148,18 +149,118 @@ scraper["mott.org"] = async (query, rows = 100) => {
 }
 
 scraper["txsmartbuy.gov"] = async (query, rows = 100) => {
-    const searchUrl = `https://www.txsmartbuy.gov/esbd-grants?&keyword=${encodeURIComponent(query)}`;
+    /**
+     * Scrapes for grants from "txsmartbuy.gov" and returns an array of grants in .json form.
+     * 
+     * SCHEMA FOR GRANTS: see return statement for inner function 'scrapeAt' 
+     * 
+     * @param {String} query the keyword to query by
+     * @param {Number} rows the max number of grants to scrape from this url
+     * @returns an array of all grants scraped from this URL, expressed in json.
+     */
 
-    // Get page count
-    const results = axios.get(searchUrl);
-    const $ = cheerio.load(results.data);
-    const pageCount = $("p.global-views-pagination-count");
-    if (pageCount.length === 0) {
-        pageCount = 0;
-    } else {
-        const tokens = pageCount.text().match(/\S+/g) || [];
-        pageCount = tokens[tokens.length - 2];
+    const scrapeAt = async (url) => {
+        /**
+         * Goes to a grant's url to scrape specific information form there
+         * 
+         * @param {String} url to the specific grant
+         *      PRECONDITION: the url is absolute and will correctly lead to the 
+         *                      grant if directly pasted into a search bar.
+         * @returns a json object with the grants information per the schema
+         */
+    
+        try {
+            const page = await axios.get(url);
+            const $ = cheerio.load(page.data);
+            
+            // There are four columns to get information from
+            let [topLeft, topRight, bottomLeft, bottomRight] = $(".esbd-result-column.egrant-column > esbd-result-cell");
+            
+            // Scrape information
+            let title       = $(".egrant-details-container > .esbd-result-title > h4").text();
+            let agency      = topLeft[0].children("p");
+            let grantNumber = topLeft[2].children("p");
+
+            let openingDate = topRight[2].children("p"); // In the form mm/dd/yyyy
+            //let openingTime = topRight[3].children("p");
+            let closingDate = topRight[4].children("p");
+            //let closingTime = topRight[5].children("p");
+            const [openingMonth, openingDay, openingYear] = openingDate.split("/");
+            const [closingMonth, closingDay, closingYear] = closingDate.split("/");
+            openingDate = new Date(openingYear, openingMonth - 1, openingDay);
+            closingDate = new Date(closingYear, closingMonth - 1, closingDay);
+            
+            let category    = bottomLeft[2].children("p");
+
+            let totalFundingAmount  = bottomRight[0].children("p");
+            let awardFloor          = bottomRight[2].children("p");
+            let awardCeiling        = bottomRight[3].children("p");
+            
+            return {
+                title,
+                agency,
+                grantNumber,
+                openingDate,
+                closingDate,
+                category,
+                totalFundingAmount,
+                awardFloor,
+                awardCeiling,
+            };
+        } catch (e) {
+            console.warn("Error fetching grant at url: ", url);
+        }
+        
+        return [];
     }
+    
+    try {
+        const searchUrl = `https://www.txsmartbuy.gov/esbd-grants?&page=1&keyword=${encodeURIComponent(query)}`;
+        
+        // Get page count
+        const results = await axios.get(searchUrl);
+        const $ = cheerio.load(results.data);
+        const pageCount = $("p.global-views-pagination-count")[0]; // There are two of these "page selectors", so choose one
+        if (pageCount.length === 0) { // No page selector means there's only one page
+            pageCount = 1;
+        } else {
+            const tokens = pageCount.text().match(/\S+/g);
+            pageCount = parseInt(tokens[tokens.length - 2]);
+        }
+        
+        // Fetch the grants
+        const grants = [];
+        let pageNum = 1;
+        do { // Loop over pages
+            // Fetch page at current page number
+            const searchUrl = `https://www.txsmartbuy.gov/esbd-grants?&page=${pageNum}&keyword=${encodeURIComponent(query)}`
+            const results = await axios.get(searchUrl);
+            const $ = cheerio.load(results.data);
+
+            let grantEntries = $(".esbd-result-row"); // Get all grants on the page
+            if (grantEntries.length === 0) { 
+                break; // No entries to scrape
+            }
+            
+            // Fetch grants from the page
+            grantEntries.each((_, el) => {
+                if (grants.length > rows) { // Stop getting grants if you have enough
+                    return false;
+                }
+                
+                let grantUrl = `https://www.txsmartbuy.gov/${$(el).find("esbd-result-title > a").attr("href")}`; // Url to detailed information about grant
+                let grantInfo = scrapeAt(grantUrl);
+                grants.push(grantInfo);
+            });
+            pageNum++; // Next page of grants
+        } while (pageNum <= pageCount);
+        
+        return grants;
+    } catch (e) {
+        console.warn("Error fetching txsmartbuy.gov grants:", e);
+    }
+    
+    return [];
 }
 
 export default scraper;
