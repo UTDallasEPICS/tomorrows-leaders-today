@@ -218,13 +218,21 @@ scraper["txsmartbuy.gov"] = async (query, rows = 100) => {
         const searchUrl = `https://www.txsmartbuy.gov/esbd-grants?&page=1&keyword=${encodeURIComponent(query)}`;
         
         // Get page count
-        const results = await axios.get(searchUrl);
+        //const results = await axios.get(searchUrl);
+        const results = await axios.get(searchUrl, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Connection": "keep-alive"
+            }
+        });
         const $ = cheerio.load(results.data);
-        const pageCount = $("p.global-views-pagination-count")[0]; // There are two of these "page selectors", so choose one
+        let pageCount = $("p.global-views-pagination-count"); 
         if (pageCount.length === 0) { // No page selector means there's only one page
             pageCount = 1;
         } else {
-            const tokens = pageCount.text().match(/\S+/g);
+            const tokens = pageCount[0].text().match(/\S+/g); // There are two of these "page selectors", so get the text of one
             pageCount = parseInt(tokens[tokens.length - 2]);
         }
         
@@ -234,7 +242,15 @@ scraper["txsmartbuy.gov"] = async (query, rows = 100) => {
         do { // Loop over pages
             // Fetch page at current page number
             const searchUrl = `https://www.txsmartbuy.gov/esbd-grants?&page=${pageNum}&keyword=${encodeURIComponent(query)}`
-            const results = await axios.get(searchUrl);
+            //const results = await axios.get(searchUrl);
+            const results = await axios.get(searchUrl, {
+                headers: {
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Connection": "keep-alive"
+                }
+            });
             const $ = cheerio.load(results.data);
 
             let grantEntries = $(".esbd-result-row"); // Get all grants on the page
