@@ -26,6 +26,7 @@
     "next": "^15.3.2",
     "next-auth": "^4.24.11",
     "nodemailer": "^6.6.5",
+    "puppeteer": "^24.39.0",
     "react": "^19.1.0",
     "react-circular-progressbar": "^2.2.0",
     "react-dom": "^19.1.0",
