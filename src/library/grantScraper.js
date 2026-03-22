@@ -2,6 +2,7 @@
 
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import puppeteer from 'puppeteer';
 import { Brackets } from 'lucide-react';
 
 // Stores URL-function pairs, detailing ways to specifically scrape websites.
@@ -148,7 +149,7 @@ scraper["mott.org"] = async (query, rows = 100) => {
     return [];
 }
 
-scraper["txsmartbuy.gov"] = async (query, rows = 100) => {
+scraper["txsmartbuy.gov"] = async (query = "", rows = 100) => {   
     /**
      * Scrapes for grants from "txsmartbuy.gov" and returns an array of grants in .json form.
      * 
@@ -213,28 +214,42 @@ scraper["txsmartbuy.gov"] = async (query, rows = 100) => {
         
         return [];
     }
+
+    //----Headless browser to get HTML (website is dynamic)
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    
+    const searchUrl = "https://www.txsmartbuy.gov/esbd-grants";
+    await page.goto(searchUrl);
+    await page.waitForSelector(".esbd-result-row");
+    
+    const html = await page.content();
+    
+    await browser.close();
+    //----END headless browser to get HTML
     
     try {
-        const searchUrl = `https://www.txsmartbuy.gov/esbd-grants?&page=1&keyword=${encodeURIComponent(query)}`;
         
-        // Get page count
-        //const results = await axios.get(searchUrl);
-        const results = await axios.get(searchUrl, {
-            headers: {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Connection": "keep-alive"
-            }
-        });
-        const $ = cheerio.load(results.data);
+        //----Get page count
+        // const results = await axios.get(searchUrl, {
+        //     headers: {
+        //         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        //         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        //         "Accept-Language": "en-US,en;q=0.9",
+        //         "Connection": "keep-alive"
+        //     }
+        // });
+        // const $ = cheerio.load(results.data);
+        const $ = cheerio.load(html);
+        
         let pageCount = $("p.global-views-pagination-count"); 
         if (pageCount.length === 0) { // No page selector means there's only one page
             pageCount = 1;
         } else {
-            const tokens = pageCount[0].text().match(/\S+/g); // There are two of these "page selectors", so get the text of one
+            const tokens = pageCount.first().text().match(/\S+/g); // There are two of these "page selectors", so get the text of one
             pageCount = parseInt(tokens[tokens.length - 2]);
         }
+        //----END Get page count
         
         // Fetch the grants
         const grants = [];
