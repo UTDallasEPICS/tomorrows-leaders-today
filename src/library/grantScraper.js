@@ -207,14 +207,14 @@ scraper["txsmartbuy.gov"] = async (query = "", rows = 100) => {
             const category = bottomLeftChildren
                 .children("ul")
                 .children("li")
-                .eq(0); // There can be multiple categories; stick with the first for now
+                .eq(0).text(); // There can be multiple categories; stick with the first for now
 
             // Scrape min/max amount and application link
             const bottomRightChildren   = bottomRight.children(".esbd-result-cell");
             let totalFundingAmount      = bottomRightChildren.eq(0).children("p").text();
             let awardFloor              = bottomRightChildren.eq(2).children("p").text();
             let awardCeiling            = bottomRightChildren.eq(3).children("p").text();
-            let applicationLink         = bottomRightChildren.eq(4).children("p").text();
+            let applicationLink         = bottomRightChildren.eq(4).children("a").attr("href");
             
             return {
                 title,
@@ -264,9 +264,6 @@ scraper["txsmartbuy.gov"] = async (query = "", rows = 100) => {
         const grants = [];
         let pageNum = 1;
         
-        //----TEST
-        pageCount = 1;
-        //----END TEST
         do {
             //----Fetch page at current page number
             
@@ -279,33 +276,22 @@ scraper["txsmartbuy.gov"] = async (query = "", rows = 100) => {
             }
             //----END Fetch page at current page number
             
-            // Fetch grants from the page
-            // grantEntries.each(async (_, el) => {
-            //     if (grants.length > rows) { // Stop getting grants if you have enough
-            //         return false;
-            //     }
-            //     let grantUrl = `https://www.txsmartbuy.gov${$(el).find("div.esbd-result-title > a").attr("href")}`; // Url to detailed information about grant
-            //     let grantInfo = await scrapeAt(grantUrl, page);
-            //     grants.push(grantInfo);
-            // });
-            
+            // Scrape information from each grant entry's page
             for (let i = 0; i < grantEntries.length; i++) {
                 if (grants.length > rows) {
                     return false;
                 }
+                let el = grantEntries.eq(i);
                 let grantUrl = `https://www.txsmartbuy.gov${$(el).find("div.esbd-result-title > a").attr("href")}`; // Url to detailed information about grant
                 let grantInfo = await scrapeAt(grantUrl, page);
                 grants.push(grantInfo);
             }
 
-            // Navigate to the next page
-            await Promise.all([
-                page.waitForNavigation({waitUntil: 'networkidle0'}),
-                page.click("#Next"),
-            ])
-            pageNum++; // Next page of grants
+            // Navigate to next page of grants
+            pageNum++; 
+            await page.goto(`https://www.txsmartbuy.gov/esbd-grants?page=${pageNum}`, { waitUntil: 'networkidle0' });
             
-            html = page.content();
+            html = await page.content();
         } while (pageNum <= pageCount);
         
         await browser.close();

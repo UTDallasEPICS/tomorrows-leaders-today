@@ -3,124 +3,7 @@ import axios from 'axios';
 import puppeteer from 'puppeteer';
 import * as cheerio from 'cheerio';
 
-async function test2() {
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    
-    /*
-    page.on('framenavigated', frame => {
-        console.log('Navigated to:', frame.url());
-        });
-        
-    page.on('requestfailed', request => {
-      console.log('Request failed:', request.url(), request.failure());
-    });
-    */
-    const url = "https://www.txsmartbuy.gov/esbd-grants/320-32026-00081";
-    const url2 = "https://www.txsmartbuy.gov/esbd-grants/582-26-85002-AF";
-    const getInfo = async (url) => {
-        console.log("TEST")
-        await page.goto(url, { waitUntil: 'networkidle0' });
-        await page.waitForSelector("div.esbd-result-body-columns");
-        
-        const html = await page.content();
-        const $ = cheerio.load(html);
-
-        //----Get information from the page
-        let columns = $(".esbd-result-column.egrant-column");
-        let topLeft = columns.eq(0);
-        let topRight = columns.eq(1);
-        let bottomLeft = columns.eq(2);
-        let bottomRight = columns.eq(3);
-
-        let topLeftChildren = topLeft.children(".esbd-result-cell");
-        console.log("tlc:", topLeftChildren.eq(0).children("p").text())
-        //----END Get information from the page
-    }
-    
-    await getInfo(url2);
-    await getInfo(url);
-    await browser.close();
-}
-
-async function test3() {
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    const url = "https://www.txsmartbuy.gov/esbd-grants/320-32026-00081";
-    const url2 = "https://www.txsmartbuy.gov/esbd-grants/582-26-85002-AF";
-    try {
-        await page.goto(url, { waitUntil: 'networkidle0' });
-        await page.waitForSelector("div.esbd-result-body-columns");
-        console.log("TEST")
-        await page.goto(url2, { waitUntil: 'networkidle0' });
-        await page.waitForSelector("div.esbd-result-body-columns");
-        console.log("TEST2")
-    } catch (e) {
-        console.log(e);
-    }
-    browser.close();
-}
-
-async function test4() {
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    const url = "https://www.txsmartbuy.gov/esbd-grants/320-32026-00081";
-    const url2 = "https://www.txsmartbuy.gov/esbd-grants/582-26-85002-AF";
-    const getInfo = async (url) => {
-        console.log("TEST")
-        await page.goto(url, { waitUntil: 'networkidle0' });
-        await page.waitForSelector("div.esbd-result-body-columns");
-        
-        // const html = await page.content();
-        // await browser.close();
-        // const $ = cheerio.load(html);
-
-        // //----Get information from the page
-        // let columns = $(".esbd-result-column.egrant-column");
-        // let topLeft = columns.eq(0);
-        // let topRight = columns.eq(1);
-        // let bottomLeft = columns.eq(2);
-        // let bottomRight = columns.eq(3);
-
-        // let topLeftChildren = topLeft.children(".esbd-result-cell");
-        // console.log("tlc:", topLeftChildren.eq(0).children("p").text())
-    }
-    
-    await getInfo(url2);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await getInfo(url);
-    await browser.close(); 
-}
-
-async function test5() {
+async function test() {
      const scrapeAt = async (url, page) => {
         /**
          * Goes to a grant's url to scrape specific information form there
@@ -209,17 +92,6 @@ async function test5() {
     //----END headless browser to get HTML
     const $ = cheerio.load(html);
     let grantEntries = $(".esbd-result-row");
-    // grantEntries.each(async (_, el) => {
-    //     let grantUrl = `https://www.txsmartbuy.gov${$(el).find("div.esbd-result-title > a").attr("href")}`; // Url to detailed information about grant
-    //     let grantInfo = await scrapeAt(grantUrl, page);
-    //     console.log(grantInfo);
-    //     return false;
-    // });
-    
-    // const el = grantEntries.eq(0);
-    // let grantUrl = `https://www.txsmartbuy.gov${$(el).find("div.esbd-result-title > a").attr("href")}`; // Url to detailed information about grant
-    // let grantInfo = await scrapeAt(grantUrl, page);
-    // console.log(grantInfo);
 
     for (let i = 0; i < grantEntries.length; i++) {
         let el = grantEntries.eq(i);
@@ -231,13 +103,52 @@ async function test5() {
     browser.close();
 }
 
+async function test1() {
+    /**
+     * Scrapes for grants from "txsmartbuy.gov" and returns an array of grants in .json form.
+     * 
+     * SCHEMA FOR GRANTS: see return statement for inner function 'scrapeAt' 
+     * 
+     * @param {String} query the keyword to query by
+     * @param {Number} rows the max number of grants to scrape from this url
+     * @returns an array of all grants scraped from this URL, expressed in json.
+     */
+
+    //----Headless browser to get HTML (website is dynamic)
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    
+    const searchUrl = "https://www.txsmartbuy.gov/esbd-grants";
+    await page.goto(searchUrl);
+    await page.waitForSelector(".global-views-pagination-count");
+    
+    let html = await page.content();
+    //----END headless browser to get HTML
+    
+    let pageNum = 1;
+    try { 
+        console.log("BEFORE:",html,"\n\n")
+        await page.goto(`https://www.txsmartbuy.gov/esbd-grants?page=${pageNum}`, { waitUntil: 'networkidle0' });
+        
+        // Navigate to the next page
+        await page.goto(`https://www.txsmartbuy.gov/esbd-grants?page=${pageNum + 1}`);
+        await page.waitForSelector(".esbd-title");
+        html = await page.content();
+        console.log("AFTER:",html,"\n\n")
+    } catch (e) {
+        console.log("ERROR NAV:", e);
+    }
+    
+    await browser.close();
+    
+    return [];
+}
+
 async function testScrape() {
     let grants = await grantScraper["txsmartbuy.gov"]();
     console.log(grants);
 }
 
-// testScrape();
-test5();
-// test4();
-// test3();
-// test2();
+testScrape();
+// test1();
+// test();
