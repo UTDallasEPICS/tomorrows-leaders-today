@@ -276,25 +276,75 @@ const teaScraper = async (query = '', rows = 500) => {
 
 export default teaScraper;
 
+
 // ---------------------------------------------------------------------------
-// Run directly: node gs.js
+// Target audience keywords — broad and varied
 // ---------------------------------------------------------------------------
-teaScraper('reading', 100)
-    .then(grants => {
-        if (grants.length === 0) {
-            console.log('No grants found.');
-        } else {
-            console.log(`\n✅ Found ${grants.length} grants:\n`);
-            grants.forEach((g, i) => {
-                console.log(`--- Grant ${i + 1} ---`);
-                console.log(`  Grant Name : ${g.grantName}`);
-                console.log(`  Grant ID   : ${g.grantId}`);
-                console.log(`  Agency     : ${g.agency}`);
-                console.log(`  Category   : ${g.category}`);
-                console.log(`  Due Date   : ${g.dueDate}`);
-                console.log(`  URL        : ${g.url}`);
-                console.log();
-            });
+const TARGETED_KEYWORDS = [
+    // Parents of young teens or adults
+    'family engagement',
+    'teen programs',
+    // Current college students
+    'higher education',
+    'college access',
+    // Businesses looking to train employees
+    'workforce',
+    'career training',
+    // Women seeking leadership skills
+    'women',
+    'girls education',
+    // Online learning
+    'technology education',
+    'digital literacy',
+    // Schools / universities — leadership development
+    'leadership',
+    'mentoring',
+    // General online course topics
+    'professional development',
+    'adult education',
+];
+
+// ---------------------------------------------------------------------------
+// Helper: check if a grant is still open/recent (due date is in the future)
+// ---------------------------------------------------------------------------
+function isOpenAndRecent(grant) {
+    if (!grant.dueDate) return true; // no date = include it
+    const due = new Date(grant.dueDate);
+    if (isNaN(due)) return true;     // unparseable date = include it
+    return due >= new Date();        // only future due dates
+}
+
+// ---------------------------------------------------------------------------
+// Run directly: node GS.js
+// ---------------------------------------------------------------------------
+(async () => {
+    const allGrants = [];
+    const seenIds = new Set();
+
+    for (const keyword of TARGETED_KEYWORDS) {
+        console.log(`\n🔍 Searching: "${keyword}"`);
+        const results = await teaScraper(keyword, 50); // 50 per keyword for variety
+        let addedForKeyword = 0;
+
+        for (const grant of results) {
+            // Deduplicate + only open/recent grants
+            if (!seenIds.has(grant.grantId) && isOpenAndRecent(grant)) {
+                seenIds.add(grant.grantId);
+                allGrants.push({ ...grant, matchedKeyword: keyword });
+                addedForKeyword++;
+            }
         }
-    })
-    .catch(err => console.error('Error:', err.message));
+        console.log(`   → ${addedForKeyword} open grants added`);
+    }
+
+    // Sort by soonest due date first
+    allGrants.sort((a, b) => {
+        const da = new Date(a.dueDate), db = new Date(b.dueDate);
+        if (isNaN(da)) return 1;
+        if (isNaN(db)) return -1;
+        return da - db;
+    });
+
+    console.log(`\n✅ Total unique open grants found: ${allGrants.length}`);
+    console.log(JSON.stringify(allGrants, null, 2));
+})().catch(err => console.error('Error:', err.message));
