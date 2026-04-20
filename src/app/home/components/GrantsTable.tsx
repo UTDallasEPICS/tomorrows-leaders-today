@@ -40,10 +40,11 @@ export default function GrantsTable() {
   // Fetch grants from database
   useEffect(() => {
     async function load() {
-      const res = await fetch("/api/grants");
+      const res = await fetch("/api/grants"); // Fetch grants from database
       const data = await res.json();
-
-      const mapped: GrantRow[] = data.map((g: any) => ({
+      
+      // Parse array of grants into GrantRow
+      const mapped: GrantRow[] = data.map((g: any) => ({ 
         id: g.id,
         title: g.title,
         agency: g.agency ?? "N/A",
@@ -83,26 +84,26 @@ export default function GrantsTable() {
   ] as { key: SortField; label: string }[];
 
   const sortedGrants = [...grants].sort((a, b) => {
-  if (!activeSort) return 0;
+    if (!activeSort) return 0;
 
-  let valA: string = String(a[activeSort] ?? "");
-  let valB: string = String(b[activeSort] ?? "");
+    let valA: string = String(a[activeSort] ?? "");
+    let valB: string = String(b[activeSort] ?? "");
 
-  if (activeSort === "release" || activeSort === "deadline") {
-    const numA = valA === "N/A" ? 0 : new Date(valA).getTime();
-    const numB = valB === "N/A" ? 0 : new Date(valB).getTime();
-    return sortDirection === "asc" ? numA - numB : numB - numA;
-  }
+    if (activeSort === "release" || activeSort === "deadline") {
+      const numA = valA === "N/A" ? 0 : new Date(valA).getTime();
+      const numB = valB === "N/A" ? 0 : new Date(valB).getTime();
+      return sortDirection === "asc" ? numA - numB : numB - numA;
+    }
 
-  if (activeSort === "fund") {
-    const numA = valA === "N/A" ? 0 : Number(valA.replace(/[$,]/g, ""));
-    const numB = valB === "N/A" ? 0 : Number(valB.replace(/[$,]/g, ""));
-    return sortDirection === "asc" ? numA - numB : numB - numA;
-  }
+    if (activeSort === "fund") {
+      const numA = valA === "N/A" ? 0 : Number(valA.replace(/[$,]/g, ""));
+      const numB = valB === "N/A" ? 0 : Number(valB.replace(/[$,]/g, ""));
+      return sortDirection === "asc" ? numA - numB : numB - numA;
+    }
 
-  const cmp = valA.localeCompare(valB);
-  return sortDirection === "asc" ? cmp : -cmp;
-});
+    const cmp = valA.localeCompare(valB);
+    return sortDirection === "asc" ? cmp : -cmp;
+  });
 
 
 
@@ -138,6 +139,7 @@ export default function GrantsTable() {
         ))}
       </div>
 
+      {/* Render each grant by mapping to a div element*/}
       <div className="divide-y divide-gray-300">
         {sortedGrants.map((grant, index) => {
           const isExpanded = expandedIndex === index;

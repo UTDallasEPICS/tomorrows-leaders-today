@@ -148,13 +148,12 @@ scraper["mott.org"] = async (query, rows = 100) => {
     return [];
 }
 
-scraper["txsmartbuy.gov"] = async (query = "", rows = 100) => {   
+scraper["txsmartbuy.gov"] = async (rows = 100) => {   
     /**
      * Scrapes for grants from "txsmartbuy.gov" and returns an array of grants in .json form.
      * 
      * SCHEMA FOR GRANTS: see return statement for inner function 'scrapeAt' 
      * 
-     * @param {String} query the keyword to query by
      * @param {Number} rows the max number of grants to scrape from this url
      * @returns an array of all grants scraped from this URL, expressed in json.
      */
@@ -168,7 +167,7 @@ scraper["txsmartbuy.gov"] = async (query = "", rows = 100) => {
          *                      grant if directly pasted into a search bar.
          * @param {Page} page the headless browser instance that can scrape through
          *                      the page
-         * @returns a json object with the grants information per the schema
+         * @returns a json object depicting information about a grant (see return statement)
          */
     
         try {
@@ -246,8 +245,7 @@ scraper["txsmartbuy.gov"] = async (query = "", rows = 100) => {
     let html = await page.content();
     //----END headless browser to get HTML
     
-    try {
-        
+    try { 
         //----Get page count
         const $ = cheerio.load(html);
         
@@ -279,7 +277,7 @@ scraper["txsmartbuy.gov"] = async (query = "", rows = 100) => {
             // Scrape information from each grant entry's page
             for (let i = 0; i < grantEntries.length; i++) {
                 if (grants.length > rows) {
-                    return false;
+                    break;
                 }
                 let el = grantEntries.eq(i);
                 let grantUrl = `https://www.txsmartbuy.gov${$(el).find("div.esbd-result-title > a").attr("href")}`; // Url to detailed information about grant
