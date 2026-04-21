@@ -190,7 +190,7 @@ scraper["txsmartbuy.gov"] = async (rows = 100) => {
             const title       = $(".egrant-details-container > .esbd-result-title > h4").text();
             const topLeftChildren = topLeft.children(".esbd-result-cell");
             const agency      = topLeftChildren.eq(0).children("p").text();
-            const grantNumber = topLeftChildren.eq(2).children("p").text();
+            const id = topLeftChildren.eq(2).children("p").text(); // The unique code for the grant
             
             // Scrape opening/closing dates and format them
             const topRightChildren = topRight.children(".esbd-result-cell");
@@ -218,7 +218,7 @@ scraper["txsmartbuy.gov"] = async (rows = 100) => {
             return {
                 title,
                 agency,
-                grantNumber,
+                id,
                 openingDate,
                 closingDate,
                 category,

@@ -67,15 +67,12 @@ Not currently needed but could be useful if attempting to search for websites th
 */
 
 async function run() {
-  // const keyword = "" + KEYWORDS.join(" ") + "";
-
-  // Loop over all supported websites and run scrapers
-
   const keyword = "";
   console.log(`Running scrape with keyword: "${keyword}"`);
-
+  
   const grants = [];
-
+  
+  // Loop over all supported websites and run scrapers
   for (let src in grantScraper) {
     console.log(`Scraping from ${src}...`);
     const res = await grantScraper[src](keyword);
@@ -86,6 +83,7 @@ async function run() {
 
   // Iteratively create grants in database
   try {
+    /* Old implementation for deciding what new grants will be inserted
     const newEntries = grants.map((g, i) => {
       return {
         opportunityNumber: g.number,
@@ -97,11 +95,33 @@ async function run() {
         closingDate: new Date(g.closeDate)
       };
     });
+    */
+
+    // List of keywords to exclude
+    const exclude = ["therapy", "school", "young children", "early childhood", "health"];
+
+    // Filter out grants whose titles/descriptions contain any of the anti-keywords
+    const newEntries = grants.filter(grant => 
+      exclude.some(excludedWord => 
+        !String(grant.title).toLowerCase().includes(excludedWord) &&
+        !grant.description?.toLowerCase().includes(excludedWord)
+      )
+    ).map((g, i) => {
+      return {
+        opportunityNumber: g.id,
+        title: g.title,
+        agency: g.agency,
+        applicationLink: g.applicationLink,
+        applicationType: "Application",
+        openingDate: new Date(g.postedDate),
+        closingDate: new Date(g.closeDate)
+      };
+    });
 
     newEntries.forEach(async e => {
       try {
         await prisma.grant.upsert({
-          where: { opportunityNumber: e.opportunityNumber },
+          where: { opportunityNumber: e.id },
           update: {
             title: e.title,
             agency: e.agency,
