@@ -1,18 +1,13 @@
 /**
  * Texas Grant Resource Center — Statewide Opportunities Scraper
  * Source: https://tgrc.hogg.utexas.edu/statewide-opportunities/
-
+ *
  */
 
-"use strict";
+import axios from "axios";
+import * as cheerio from "cheerio";
 
-const axios   = require("axios");
-const cheerio = require("cheerio");
-const fs      = require("fs");
-const path    = require("path");
-
-const SOURCE_URL  = "https://tgrc.hogg.utexas.edu/statewide-opportunities/";
-const OUTPUT_FILE = path.join(__dirname, "grants_output.json");
+const SOURCE_URL = "https://tgrc.hogg.utexas.edu/statewide-opportunities/";
 
 const FOCUS_KEYWORDS = [
   "youth workforce",
@@ -39,7 +34,7 @@ const FOCUS_KEYWORDS = [
   "Pediatric",
   "pediatric",
   "Foster youth",
-  "foster", 
+  "foster",
   "Veterans",
   "Military",
   "Wounded warriors",
@@ -58,8 +53,7 @@ const FOCUS_KEYWORDS = [
   "Professional development",
   "professional",
   "Development",
-  "development"
-
+  "development",
 ];
 
 const HTTP_CONFIG = {
@@ -83,33 +77,29 @@ function parseDate(raw) {
   );
   if (longMatch) {
     const months = {
-      january:"01", february:"02", march:"03",    april:"04",
-      may:"05",     june:"06",     july:"07",      august:"08",
-      september:"09", october:"10", november:"11", december:"12",
+      january: "01", february: "02", march: "03",    april: "04",
+      may: "05",     june: "06",     july: "07",      august: "08",
+      september: "09", october: "10", november: "11", december: "12",
     };
     const [, mon, day, year] = longMatch;
-    return `${year}-${months[mon.toLowerCase()]}-${day.padStart(2, "0")}T00:00:00.000Z`;
+    return new Date(`${year}-${months[mon.toLowerCase()]}-${day.padStart(2, "0")}T00:00:00.000Z`);
   }
 
   const mdyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (mdyMatch) {
     const [, m, d, y] = mdyMatch;
-    return `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}T00:00:00.000Z`;
+    return new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T00:00:00.000Z`);
   }
 
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return `${s.slice(0, 10)}T00:00:00.000Z`;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(`${s.slice(0, 10)}T00:00:00.000Z`);
   return null;
 }
 
 function matchesFocus(text) {
   const lower = text.toLowerCase();
-  return FOCUS_KEYWORDS.some((kw) => lower.includes(kw));
+  return FOCUS_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase()));
 }
 
-/**
- * Guess a category based on keywords in the grant text.
- * Maps to your focus areas.
- */
 function detectCategory(text) {
   const lower = text.toLowerCase();
   const cats  = [];
@@ -120,31 +110,10 @@ function detectCategory(text) {
   return cats.length > 0 ? cats.join(", ") : "General Nonprofit";
 }
 
-function mergeGrants(existing, incoming) {
-  const existingMap = new Map(
-    existing.map((g) => [g.title.trim().toLowerCase(), g])
-  );
-  const newGrants = [];
-
-  for (const grant of incoming) {
-    const key = grant.title.trim().toLowerCase();
-    if (existingMap.has(key)) {
-      existingMap.get(key).updatedAt = grant.createdAt;
-    } else {
-      existingMap.set(key, grant);
-      newGrants.push(grant);
-    }
-  }
-
-  return { all: [...existingMap.values()], newGrants };
-}
-
-function parseGrants(html, runTime) {
+function parseGrants(html) {
   const $      = cheerio.load(html);
   const grants = [];
 
-  // Each grant on this site is its own <ul> inside .entry-content
-  // We only process <ul> elements between the grants h3 and the next h3
   let inGrantsSection = false;
   let stopProcessing  = false;
   let grantIndex      = 1;
@@ -170,15 +139,12 @@ function parseGrants(html, runTime) {
     const $li = $(el).children("li").first();
     if (!$li.length) return;
 
-    // Title text
     const titleEl = $li.find("> a > strong, > strong > a, > a, > strong").first();
     const title   = titleEl.text().trim();
     if (!title) return;
 
-    // Application link — the href on the anchor wrapping the title
     const applicationLink = $li.find("> a").first().attr("href") || null;
 
-    // Sub-list: agency, deadline, description
     const subItems = $li.find("> ul > li")
       .map((__, sub) => $(sub).text().trim())
       .get();
@@ -194,10 +160,7 @@ function parseGrants(html, runTime) {
     const combined = `${title} ${subItems.join(" ")}`;
     if (!matchesFocus(combined)) return;
 
-    const category = detectCategory(combined);
-
-    // Generate a stable opportunityNumber since site doesn't provide one:
-    // "TGRC-" + zero-padded index per scrape run
+    const category          = detectCategory(combined);
     const opportunityNumber = `TGRC-${String(grantIndex).padStart(4, "0")}`;
     grantIndex++;
 
@@ -205,25 +168,46 @@ function parseGrants(html, runTime) {
       opportunityNumber,
       title,
       agency,
-      openingDate:          null,       // not published on this site
+      openingDate:        null,
       closingDate,
-      applicationType:      "Grant",
+      applicationType:    "Grant",
       category,
       applicationLink,
-      awardFloor:           null,       // not published on this site
-      awardCeiling:         null,       // not published on this site
-      totalFundingAmount:   null,       // not published on this site
-      createdAt:            runTime,
-      updatedAt:            runTime,
+      awardFloor:         null,
+      awardCeiling:       null,
+      totalFundingAmount: null,
     });
   });
 
   return grants;
 }
 
+// Sends each grant to the Next.js API instead of writing to DB directly
+// Change API_URL to your deployed app URL when running on Google Cloud
+const API_URL = process.env.API_URL || "http://localhost:3001/api/grants";
+
+async function saveViaAPI(grants) {
+  let created = 0;
+  let failed  = 0;
+
+  for (const grant of grants) {
+    try {
+      await axios.post(API_URL, grant, {
+        headers: { "Content-Type": "application/json" },
+      });
+      created++;
+    } catch (err) {
+      console.error(`   Failed to save "${grant.title}": ${err.message}`);
+      failed++;
+    }
+  }
+
+  return { created, failed };
+}
+
 async function main() {
   const runTime = nowISO();
-  console.log(`\n🔍  TGRC Grant Scraper`);
+  console.log(`\n  TGRC Grant Scraper`);
   console.log(`    Run time : ${runTime}`);
   console.log(`    Source   : ${SOURCE_URL}\n`);
 
@@ -232,50 +216,35 @@ async function main() {
     console.log("  Fetching page...");
     const res = await axios.get(SOURCE_URL, HTTP_CONFIG);
     html = res.data;
-    console.log("     Page fetched.");
+    console.log("   Page fetched.");
   } catch (err) {
-    console.error(`     HTTP error: ${err.message}`);
+    console.error(`   HTTP error: ${err.message}`);
     process.exit(1);
   }
 
-  console.log("   Parsing grants...");
-  const scraped = parseGrants(html, runTime);
-  console.log(`    Found ${scraped.length} matching grant(s).`);
+  console.log("  Parsing grants...");
+  const scraped = parseGrants(html);
+  console.log(`   Found ${scraped.length} matching grant(s).`);
 
-  let existing = [];
-  if (fs.existsSync(OUTPUT_FILE)) {
-    try {
-      existing = JSON.parse(fs.readFileSync(OUTPUT_FILE, "utf-8"));
-      console.log(`    Loaded ${existing.length} existing grant(s) from disk.`);
-    } catch {
-      console.warn("    ⚠  Could not parse existing file — starting fresh.");
-    }
+  if (scraped.length === 0) {
+    console.log("\n  No grants matched — nothing saved.");
+    return;
   }
 
-  const { all, newGrants } = mergeGrants(existing, scraped);
-  console.log(`    ${newGrants.length} new | ${scraped.length - newGrants.length} already existed (updatedAt refreshed).`);
+  console.log(`  Sending to API: ${API_URL}`);
+  const { created, failed } = await saveViaAPI(scraped);
+  console.log(`   Done — ${created} grant(s) saved, ${failed} failed.`);
 
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(all, null, 2), "utf-8");
-  console.log(`\n  Saved ${all.length} total grant(s) → ${OUTPUT_FILE}`);
-
-  if (newGrants.length > 0) {
-    console.log("\n── New grants ──────────────────────────────────────────────");
-    newGrants.forEach((g, i) => {
-      console.log(`\n  [${i + 1}] ${g.title}`);
-      console.log(`       Agency      : ${g.agency ?? "N/A"}`);
-      console.log(`       Category    : ${g.category}`);
-      console.log(`       Closes      : ${g.closingDate ?? "N/A"}`);
-      console.log(`       Link        : ${g.applicationLink ?? "N/A"}`);
-      console.log(`       Opp #       : ${g.opportunityNumber}`);
-      console.log(`       Created     : ${g.createdAt}`);
-    });
-    console.log("\n────────────────────────────────────────────────────────────");
-  } else {
-    console.log("\n  No new grants this run — all already in the database.");
-  }
-
-  console.log("\n  Full output (JSON):\n");
-  console.log(JSON.stringify(all, null, 2));
+  console.log("\n── Grants saved ─────────────────────────────────────────────");
+  scraped.forEach((g, i) => {
+    console.log(`\n  [${i + 1}] ${g.title}`);
+    console.log(`       Agency   : ${g.agency ?? "N/A"}`);
+    console.log(`       Category : ${g.category}`);
+    console.log(`       Closes   : ${g.closingDate ? g.closingDate.toISOString() : "N/A"}`);
+    console.log(`       Link     : ${g.applicationLink ?? "N/A"}`);
+    console.log(`       Opp #    : ${g.opportunityNumber}`);
+  });
+  console.log("\n─────────────────────────────────────────────────────────────\n");
 }
 
 main().catch((err) => {
