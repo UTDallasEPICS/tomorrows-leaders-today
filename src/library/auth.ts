@@ -26,7 +26,7 @@ export const auth = betterAuth({
                         pass: env.NODEMAILER_PASS
                     }
                 });
-                transporter.sendMail({
+                await transporter.sendMail({
                     from: `TLT-Tomorrow's Leaders Today <${env.NODEMAILER_USER}>`,
                     to: email,
                     subject: "Email Verification",

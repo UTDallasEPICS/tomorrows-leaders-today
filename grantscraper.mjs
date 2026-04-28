@@ -1,14 +1,16 @@
 /**
  * ============================================================
- *  GRANT SCRAPER — grants.gov search2 API
+ *  GRANT SCRAPER - grants.gov search2 API
  * ============================================================
  *  Features:
- *   • Paginates through ALL result pages per keyword
- *   • Flags grants closing within 10 days (⚠ EXPIRING SOON)
- *   • Iterates through a configurable keyword list
- *   • Groups results by keyword
- *   • Sorts each group by award_max descending
- *   • Outputs JSON + CSV
+ *   - Paginates through ALL result pages per keyword
+ *   - Flags grants closing within 10 days (EXPIRING SOON)
+ *   - Filters out grants with no expiration date
+ *   - Filters out grants with missing or malformed titles
+ *   - Iterates through a configurable keyword list
+ *   - Groups results by keyword
+ *   - Sorts each group by award_max descending
+ *   - Outputs JSON + CSV
  *
  *  Usage:
  *   node grantscraper.mjs
@@ -23,7 +25,7 @@
 import axios from "axios";
 import fs from "fs";
 
-// ─── CONFIGURATION ──────────────────────────────────────────
+// --- CONFIGURATION ------------------------------------------
 const KEYWORDS = [
   "leadership training",
   "STEM education",
@@ -33,27 +35,23 @@ const KEYWORDS = [
 ];
 
 const API_URL = "https://api.grants.gov/v1/api/search2";
-const PAGE_SIZE = 100;                // max rows per request (API caps at ~1000)
-const EXPIRY_WINDOW_DAYS = 10;        // flag grants closing within this many days
-const DELAY_MS = 500;                 // polite delay between requests
-const OPP_STATUSES = "forecasted|posted";   // only open opportunities
+const PAGE_SIZE = 100;
+const EXPIRY_WINDOW_DAYS = 10;
+const DELAY_MS = 500;
+const OPP_STATUSES = "forecasted|posted";
 
-// ─── HELPERS ────────────────────────────────────────────────
+// --- HELPERS ------------------------------------------------
 
-/** Pause execution for ms milliseconds */
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Parse grants.gov date strings like "10/11/2023" or "" into Date | null */
 function parseGrantDate(dateStr) {
   if (!dateStr || dateStr.trim() === "") return null;
-  // grants.gov uses MM/DD/YYYY
   const parts = dateStr.trim().split("/");
   if (parts.length !== 3) return null;
   const [month, day, year] = parts.map(Number);
   return new Date(year, month - 1, day);
 }
 
-/** Return the number of calendar days between now and a date (negative = past) */
 function daysUntil(date) {
   if (!date) return null;
   const now = new Date();
@@ -62,7 +60,6 @@ function daysUntil(date) {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-/** Parse dollar strings like "$50,000" or "N/A" → number | null */
 function parseDollar(val) {
   if (!val || val === "N/A" || val === "") return null;
   const cleaned = String(val).replace(/[$,\s]/g, "");
@@ -70,7 +67,30 @@ function parseDollar(val) {
   return isNaN(num) ? null : num;
 }
 
-// ─── CORE: FETCH ONE PAGE ───────────────────────────────────
+/**
+ * Returns false for grants that should be excluded:
+ *  - No closing date
+ *  - Title is missing, too short, all numbers, or looks like a code
+ */
+function isValidGrant(grant) {
+  if (!grant.close_date || String(grant.close_date).trim() === "") return false;
+
+  const title = grant.title;
+  if (!title || String(title).trim() === "") return false;
+
+  const t = String(title).trim();
+  if (t.length < 8) return false;
+
+  const words = t.split(/\s+/).filter((w) => /[a-zA-Z]{2,}/.test(w));
+  if (words.length < 2) return false;
+
+  const letterCount = (t.match(/[a-zA-Z]/g) || []).length;
+  if (letterCount / t.length < 0.4) return false;
+
+  return true;
+}
+
+// --- CORE: FETCH ONE PAGE -----------------------------------
 
 async function fetchPage(keyword, startRecord = 0) {
   const body = {
@@ -92,10 +112,10 @@ async function fetchPage(keyword, startRecord = 0) {
   return resp.data.data;
 }
 
-// ─── CORE: FETCH ALL PAGES FOR ONE KEYWORD ──────────────────
+// --- CORE: FETCH ALL PAGES FOR ONE KEYWORD ------------------
 
 async function fetchAllForKeyword(keyword) {
-  console.log(`\n🔍  Searching: "${keyword}"`);
+  console.log(`\nSearching: "${keyword}"`);
 
   const firstPage = await fetchPage(keyword, 0);
   const totalHits = firstPage.hitCount || 0;
@@ -103,32 +123,28 @@ async function fetchAllForKeyword(keyword) {
 
   let allHits = [...(firstPage.oppHits || [])];
 
-  // Paginate through remaining pages
   let fetched = allHits.length;
   while (fetched < totalHits) {
     await sleep(DELAY_MS);
     const page = await fetchPage(keyword, fetched);
     const hits = page.oppHits || [];
-    if (hits.length === 0) break;        // safety valve
+    if (hits.length === 0) break;
     allHits.push(...hits);
     fetched += hits.length;
     console.log(`   Fetched ${fetched} / ${totalHits}`);
   }
 
-  console.log(`   ✅ Collected ${allHits.length} grants for "${keyword}"`);
+  console.log(`   Collected ${allHits.length} grants for "${keyword}"`);
   return allHits;
 }
 
-// ─── CORE: NORMALIZE & ENRICH ONE RAW HIT ──────────────────
+// --- CORE: NORMALIZE & ENRICH ONE RAW HIT ------------------
 
 function normalizeHit(raw, keyword) {
   const closeDate = parseGrantDate(raw.closeDate);
   const remaining = daysUntil(closeDate);
   const expiringSoon = remaining !== null && remaining >= 0 && remaining <= EXPIRY_WINDOW_DAYS;
 
-  // The search2 API doesn't return award amounts directly,
-  // but some fields may be available in extended responses.
-  // We capture what's available and mark the rest as null.
   const awardMax = parseDollar(raw.awardCeiling) ?? parseDollar(raw.award_ceiling) ?? null;
   const awardMin = parseDollar(raw.awardFloor) ?? parseDollar(raw.award_floor) ?? null;
 
@@ -148,28 +164,12 @@ function normalizeHit(raw, keyword) {
     aln: Array.isArray(raw.alnist) ? raw.alnist.join(", ") : raw.alnist || null,
     award_min: awardMin,
     award_max: awardMax,
-    // For detailed award data, you can optionally call fetchOpportunity per ID
     opportunity_url: `https://grants.gov/search-results-detail/${raw.id}`,
     scraped_at: new Date().toISOString(),
   };
 }
 
-// ─── OPTIONAL: FETCH DETAILED AWARD DATA ────────────────────
-// The search2 endpoint doesn't always include award amounts.
-// Uncomment this section and call it per opportunity if you need
-// award_min / award_max populated from the detail endpoint.
-
-/*
-async function fetchOpportunityDetail(oppId) {
-  const resp = await axios.get(
-    `https://api.grants.gov/v1/api/fetchOpportunity?oppId=${oppId}`,
-    { timeout: 15000 }
-  );
-  return resp.data?.data || {};
-}
-*/
-
-// ─── MAIN ───────────────────────────────────────────────────
+// --- MAIN ---------------------------------------------------
 
 async function main() {
   const timeStart = Date.now();
@@ -181,50 +181,55 @@ async function main() {
       const rawHits = await fetchAllForKeyword(keyword);
       const normalized = rawHits.map((h) => normalizeHit(h, keyword));
 
-      // Sort by award_max descending (nulls go to the bottom)
-      normalized.sort((a, b) => {
+      const filtered = normalized.filter(isValidGrant);
+      const removed = normalized.length - filtered.length;
+      if (removed > 0) {
+        console.log(`   Filtered out ${removed} grants (no deadline or invalid title)`);
+      }
+
+      filtered.sort((a, b) => {
         if (a.award_max === null && b.award_max === null) return 0;
         if (a.award_max === null) return 1;
         if (b.award_max === null) return -1;
         return b.award_max - a.award_max;
       });
 
-      resultsByKeyword[keyword] = normalized;
-      allGrants.push(...normalized);
+      resultsByKeyword[keyword] = filtered;
+      allGrants.push(...filtered);
     } catch (err) {
-      console.error(`   ❌ Error scraping "${keyword}": ${err.message}`);
+      console.error(`   Error scraping "${keyword}": ${err.message}`);
       resultsByKeyword[keyword] = [];
     }
 
     await sleep(DELAY_MS);
   }
 
-  // ─── SUMMARY ────────────────────────────────────────────
+  // --- SUMMARY ----------------------------------------------
 
-  console.log("\n" + "═".repeat(60));
+  console.log("\n" + "=".repeat(60));
   console.log("  SCRAPE COMPLETE");
-  console.log("═".repeat(60));
+  console.log("=".repeat(60));
 
   let totalExpiring = 0;
   for (const [kw, grants] of Object.entries(resultsByKeyword)) {
     const expiring = grants.filter((g) => g.expiring_soon);
     totalExpiring += expiring.length;
-    console.log(`\n  📁 "${kw}": ${grants.length} grants (${expiring.length} expiring within ${EXPIRY_WINDOW_DAYS} days)`);
+    console.log(`\n  "${kw}": ${grants.length} grants (${expiring.length} expiring within ${EXPIRY_WINDOW_DAYS} days)`);
 
     if (expiring.length > 0) {
-      console.log("     ⚠  EXPIRING SOON:");
+      console.log("     EXPIRING SOON:");
       expiring.forEach((g) => {
-        console.log(`        • [${g.days_until_close}d] ${g.title}`);
+        console.log(`        [${g.days_until_close}d] ${g.title}`);
         console.log(`          Close: ${g.close_date}  |  ${g.opportunity_url}`);
       });
     }
   }
 
   console.log(`\n  Total grants: ${allGrants.length}`);
-  console.log(`  Total expiring soon (≤${EXPIRY_WINDOW_DAYS} days): ${totalExpiring}`);
+  console.log(`  Total expiring soon (<=${EXPIRY_WINDOW_DAYS} days): ${totalExpiring}`);
   console.log(`  Time elapsed: ${((Date.now() - timeStart) / 1000).toFixed(1)}s`);
 
-  // ─── OUTPUT: JSON ───────────────────────────────────────
+  // --- OUTPUT: JSON -----------------------------------------
 
   const jsonOutput = {
     scraped_at: new Date().toISOString(),
@@ -243,9 +248,9 @@ async function main() {
   };
 
   fs.writeFileSync("grants_results.json", JSON.stringify(jsonOutput, null, 2));
-  console.log("\n  💾 Saved: grants_results.json");
+  console.log("\n  Saved: grants_results.json");
 
-  // ─── OUTPUT: CSV ────────────────────────────────────────
+  // --- OUTPUT: CSV ------------------------------------------
 
   const csvHeaders = [
     "keyword", "id", "number", "title", "agency_code", "agency_name",
@@ -268,10 +273,10 @@ async function main() {
   }
 
   fs.writeFileSync("grants_results.csv", csvRows.join("\n"));
-  console.log("  💾 Saved: grants_results.csv\n");
+  console.log("  Saved: grants_results.csv\n");
 }
 
-// ─── RUN ────────────────────────────────────────────────────
+// --- RUN ----------------------------------------------------
 main().catch((err) => {
   console.error("Fatal error:", err.message);
   process.exit(1);

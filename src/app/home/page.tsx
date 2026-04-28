@@ -1,13 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 import React from 'react';
 import Navbar from "../components/Navbar";
-import GrantsTable from "./components/GrantsTable";
+import GrantsView from "./components/GrantsView";
 import { protect } from '@/library/auth';
 
-
-import { SearchBar} from "./SearchBar";
-
-// Define interfaces for type safety
 interface GrantApplication {
   grantId: number;
   accountId: number;
@@ -46,9 +42,7 @@ export default async function Homepage() {
   await protect();
 
   const grants = await prisma.grant.findMany({
-    include: {
-      applications: true,
-    },
+    include: { applications: true },
   }) as Grant[];
 
   const formatted: FormattedGrant[] = grants.map((grant: Grant) => {
@@ -68,9 +62,7 @@ export default async function Homepage() {
       <div className="p-6 bg-gray-100 min-h-screen">
         <section className="mt-8">
           <h1 className="text-3xl font-bold mb-4">Grant Tracker</h1>
-          <SearchBar />
-          <GrantsTable />
-        
+          <GrantsView />
         </section>
       </div>
     </>

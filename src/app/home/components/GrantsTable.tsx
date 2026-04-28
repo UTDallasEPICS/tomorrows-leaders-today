@@ -2,13 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Info, X } from "lucide-react";
-
-type StatusUpdate = {
-  timestamp: string;
-  user: { name: string };
-  fromStatus: string | null;
-  toStatus: string;
-};
+import Pagination from "@mui/material/Pagination";
+import Stack from "@mui/material/Stack";
 
 type GrantRow = {
   id: number;
@@ -30,12 +25,25 @@ type GrantRow = {
 
 type SortField = "title" | "agency" | "release" | "deadline" | "fund" | "status";
 
-export default function GrantsTable() {
+const PAGE_SIZE = 25;
+
+type GrantsTableProps = {
+  searchTerm?: string;
+  includedKeywords?: string[];
+  excludedKeywords?: string[];
+};
+
+export default function GrantsTable({
+  searchTerm = "",
+  includedKeywords = [],
+  excludedKeywords = [],
+}: GrantsTableProps) {
   const [grants, setGrants] = useState<GrantRow[]>([]);
   const [activeSort, setActiveSort] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [showInfoModal, setShowInfoModal] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Fetch grants from database
   useEffect(() => {
@@ -47,23 +55,15 @@ export default function GrantsTable() {
         id: g.id,
         title: g.title,
         agency: g.agency ?? "N/A",
-
         release: g.openingDate
           ? new Date(g.openingDate).toLocaleDateString()
           : "N/A",
-
         deadline: g.closingDate
           ? new Date(g.closingDate).toLocaleDateString()
           : "N/A",
-
-        fund: g.totalFundingAmount
-          ? `$${g.totalFundingAmount.toLocaleString()}`
-          : "N/A",
-
+        fund: g.opportunityNumber ?? "N/A",
         status: g.logs?.[0]?.newStatus ?? "Not Applied",
-
         applicationLink: g.applicationLink ?? null,
-
         logs: g.logs ?? [],
       }));
 
@@ -73,38 +73,84 @@ export default function GrantsTable() {
     load();
   }, []);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+    setExpandedIndex(null);
+  }, [searchTerm, activeSort, sortDirection, includedKeywords, excludedKeywords]);
+
   const categories = [
     { key: "title", label: "Grant" },
     { key: "agency", label: "Agency" },
     { key: "release", label: "Release" },
     { key: "deadline", label: "Deadline" },
-    { key: "fund", label: "Fund" },
+    { key: "fund", label: "Opportunity #" },
     { key: "status", label: "Status" },
   ] as { key: SortField; label: string }[];
 
-  const sortedGrants = [...grants].sort((a, b) => {
-  if (!activeSort) return 0;
+  // ─── FILTERING PIPELINE ──────────────────────────────────
+  // 1. Search bar filter
+  let filtered = searchTerm
+    ? grants.filter((g) => {
+        const term = searchTerm.toLowerCase();
+        return (
+          g.title.toLowerCase().includes(term) ||
+          g.agency.toLowerCase().includes(term)
+        );
+      })
+    : grants;
 
-  let valA: string = String(a[activeSort] ?? "");
-  let valB: string = String(b[activeSort] ?? "");
-
-  if (activeSort === "release" || activeSort === "deadline") {
-    const numA = valA === "N/A" ? 0 : new Date(valA).getTime();
-    const numB = valB === "N/A" ? 0 : new Date(valB).getTime();
-    return sortDirection === "asc" ? numA - numB : numB - numA;
+  // 2. Include filter — keep only grants matching at least one included keyword
+  if (includedKeywords.length > 0) {
+    filtered = filtered.filter((g) => {
+      const text = `${g.title} ${g.agency}`.toLowerCase();
+      return includedKeywords.some((kw) => text.includes(kw.toLowerCase()));
+    });
   }
 
-  if (activeSort === "fund") {
-    const numA = valA === "N/A" ? 0 : Number(valA.replace(/[$,]/g, ""));
-    const numB = valB === "N/A" ? 0 : Number(valB.replace(/[$,]/g, ""));
-    return sortDirection === "asc" ? numA - numB : numB - numA;
+  // 3. Exclude filter — remove grants matching any excluded keyword
+  if (excludedKeywords.length > 0) {
+    filtered = filtered.filter((g) => {
+      const text = `${g.title} ${g.agency}`.toLowerCase();
+      return !excludedKeywords.some((kw) => text.includes(kw.toLowerCase()));
+    });
   }
 
-  const cmp = valA.localeCompare(valB);
-  return sortDirection === "asc" ? cmp : -cmp;
-});
+  // ─── SORTING ─────────────────────────────────────────────
+  const sortedGrants = [...filtered].sort((a, b) => {
+    if (!activeSort) return 0;
 
+    let valA: string = String(a[activeSort] ?? "");
+    let valB: string = String(b[activeSort] ?? "");
 
+    if (activeSort === "release" || activeSort === "deadline") {
+      const numA = valA === "N/A" ? 0 : new Date(valA).getTime();
+      const numB = valB === "N/A" ? 0 : new Date(valB).getTime();
+      return sortDirection === "asc" ? numA - numB : numB - numA;
+    }
+
+    if (activeSort === "fund") {
+      const numA = valA === "N/A" ? 0 : Number(valA.replace(/[$,]/g, ""));
+      const numB = valB === "N/A" ? 0 : Number(valB.replace(/[$,]/g, ""));
+      return sortDirection === "asc" ? numA - numB : numB - numA;
+    }
+
+    const cmp = valA.localeCompare(valB);
+    return sortDirection === "asc" ? cmp : -cmp;
+  });
+
+  // ─── PAGINATION ──────────────────────────────────────────
+  const totalPages = Math.ceil(sortedGrants.length / PAGE_SIZE);
+  const paginatedGrants = sortedGrants.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, page: number) => {
+    setCurrentPage(page);
+    setExpandedIndex(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className="bg-[#E8DCC8] rounded-lg shadow overflow-hidden">
@@ -139,7 +185,13 @@ export default function GrantsTable() {
       </div>
 
       <div className="divide-y divide-gray-300">
-        {sortedGrants.map((grant, index) => {
+        {paginatedGrants.length === 0 && (
+          <div className="p-8 text-center text-gray-500">
+            No grants match the current filters.
+          </div>
+        )}
+
+        {paginatedGrants.map((grant, index) => {
           const isExpanded = expandedIndex === index;
 
           return (
@@ -172,10 +224,7 @@ export default function GrantsTable() {
                     <Info className="w-5 h-5 text-gray-600" />
                   </button>
 
-                  
-
                   <div className="flex gap-4">
-                    
                     <button
                       className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
                       onClick={(e) => {
@@ -251,6 +300,41 @@ export default function GrantsTable() {
           );
         })}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-300">
+          <span className="text-sm text-gray-600">
+            Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+            {Math.min(currentPage * PAGE_SIZE, sortedGrants.length)} of{" "}
+            {sortedGrants.length} grants
+          </span>
+          <Stack spacing={2}>
+            <Pagination
+              count={totalPages}
+              page={currentPage}
+              onChange={handlePageChange}
+              shape="rounded"
+              size="large"
+              sx={{
+                "& .MuiPaginationItem-root": {
+                  fontSize: "1.1rem",
+                  minWidth: "48px",
+                  height: "48px",
+                  margin: "0 6px",
+                  "&.Mui-selected": {
+                    backgroundColor: "#B89A49",
+                    color: "white",
+                    "&:hover": {
+                      backgroundColor: "#a08640",
+                    },
+                  },
+                },
+              }}
+            />
+          </Stack>
+        </div>
+      )}
     </div>
   );
 }

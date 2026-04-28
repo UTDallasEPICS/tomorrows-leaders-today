@@ -6,98 +6,55 @@ import * as cheerio from 'cheerio';
 const scraper = {};
 
 scraper["grants.gov"] = async (query, rows = 500) => {
-    /** 
-     * Get up to <rows> unique grants from grants.gov that match <query>
-     * 
-     * @param query keyword to search by
-     * @param rows maximum number of resulting grants
-     * 
-     * @returns list of grant entries [{
-     *  id: id of grant
-     *  number: opportunity #
-     *  title: name of grant
-     *  agency: agency that gives the grant
-     *  status: closed|open|archived
-     *  postedDate: date that grant application opens
-     *  closeDate: date that grant application closes
-     *  url: link to grant
-     * }]
-    */
-    const endpoint = 'https://apply07.grants.gov/grantsws/rest/opportunities/search';
+    const endpoint = 'https://api.grants.gov/v1/api/search2';
 
-    // Capture exact body shape from your browser's DevTools that matches request payloads.
     const body = {
-        "keyword": "department of education", // e.g. "leadership"
-        "keywordEncoded": true,
-        "resultType": "application",
-        "searchOnly": false,
-        "oppNum": "",
-        "cfda": null,
-        "sortBy": "", // "" for default sort
-        "dateRange": "", // "" for all dates
-        "oppStatuses": "forecasted|posted",
-        "startRecordNum": 0,
-        "eligibilities": null,
-        "fundingInstruments": "G", // "G" for grants
-        "fundingCategories": null,
-        "agencies": null,
-        "rows": rows,
+        keyword: query,
+        oppStatuses: "forecasted|posted",
+        rows: rows,
+        startRecordNum: 0,
     };
 
-    const { data } = await axios.post(endpoint, body, {
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
+    const resp = await axios.post(endpoint, body, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
     });
 
+    if (resp.data?.errorcode !== 0) {
+        throw new Error(`API error: ${resp.data?.msg || 'unknown'}`);
+    }
+
+    const data = resp.data.data;
     const list = data.oppHits || [];
     console.log("Total matching grants:", data.hitCount);
-    console.log("Number of grants in this page:", data.oppHits.length);
+    console.log("Number of grants in this page:", list.length);
 
-    // Map each grant to include the detail page URL
-    // list.forEach(opp => console.log(opp));
-    // list.forEach(opp => console.log(opp));
+    const withAwards = list.filter(o => o.awardFloor || o.awardCeiling);
+    console.log(`Grants with award data: ${withAwards.length} / ${list.length}`);
+    if (withAwards[0]) console.log("Sample with awards:", JSON.stringify(withAwards[0], null, 2));
+
     return list.map(opp => ({
         id: opp.id,
         number: opp.number,
         title: opp.title,
-        agency: opp.agency,
+        agency: opp.agencyName || opp.agencyCode || null,
         status: opp.oppStatus,
         postedDate: opp.openDate,
         closeDate: opp.closeDate,
+        awardFloor: opp.awardFloor ?? null,
+        awardCeiling: opp.awardCeiling ?? null,
         url: 'https://grants.gov/search-results-detail/' + opp.id,
     }));
 }
 
 scraper["mott.org"] = async (query, rows = 100) => {
-    /** 
-     * Get up to <rows> unique grants from mott.org that match <query>
-     * 
-     * @param query keyword to search by
-     * @param rows maximum number of resulting grants
-     * 
-     * @returns list of grant entries [{
-     *  number: opportunity #
-     *  title: name of grant
-     *  agency: agency that gives the grant
-     *  status: closed|open|archived
-     *  postedDate: date that grant application opens
-     *  closeDate: date that grant application closes
-     *  amount: funding amount of grant per recipient
-     *  url: link to grant
-     * }]
-    */
-
     try {
         const searchUrl = `https://www.mott.org/grants/?location=Texas&query=${encodeURIComponent(query)}`;
         const results = await axios.get(searchUrl);
 
-        // Get page count
         const $ = cheerio.load(results.data);
         const pageCount = parseInt($('div.paging1 > ul > li:nth-last-of-type(2) > a').text());
 
-        // While current count < rows and page <= pageCount, fetch more pages
         const grants = [];
         let page = 1;
         while (grants.length < rows && page <= pageCount) {
@@ -108,8 +65,7 @@ scraper["mott.org"] = async (query, rows = 100) => {
                 if (grants.length >= rows) return false;
                 const title = $(el).find('a > span').text().trim();
                 let url = $(el).find('a').attr('href');
-                url = url.substring(0, url.length - 1); // remove trailing slash
-                // Get opportunity number from URL
+                url = url.substring(0, url.length - 1);
 
                 const opp = url.substring(url.lastIndexOf('/') + 1).replaceAll("-", "");
                 const sponsor = $(el).find('div > p.card6-subtitle').text().trim();
@@ -122,7 +78,7 @@ scraper["mott.org"] = async (query, rows = 100) => {
                         postedDate = new Date(dates[0].trim());
                         closeDate = new Date(dates[1].trim());
                     }
-                })
+                });
 
                 grants.push({
                     number: `mott${opp}`,
