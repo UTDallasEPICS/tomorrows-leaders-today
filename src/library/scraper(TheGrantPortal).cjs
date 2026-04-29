@@ -2,55 +2,74 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const fs = require('fs');
 const path = require('path');
+const dbHandler = require('./db_handler.cjs');
 
-// Keywords for grant scraping
+// Keywords for grant scraping (INCLUDE these)
 const KEYWORDS = [
-"youth workforce",
-  "workforce development",
-  "workforce",
-  "Workforce",
-  "youth development",
-  "leadership",
-  "veteran",
-  "veterans",
-  "military",
-  "Youth",
-  "youth",
-  "Young",
-  "young",
+  "youth workforce", 
+  "workforce development", 
+  "workforce", 
+  "Workforce", 
+  "youth development", 
+  "leadership", 
+  "veteran", 
+  "veterans", 
+  "military", 
+  "Youth", 
+  "youth", 
+  "Young", 
+  "young", 
   "Children",
   "Minors",
-  "minors",
-  "Early childhood",
-  "Childhood",
-  "Education",
-  "education",
-  "Childcare",
-  "Pediatric",
-  "pediatric",
-  "Foster youth",
+  "minors", 
+  "Education", 
+  "education", 
+  "Foster youth", 
   "foster", 
-  "Veterans",
-  "Military",
-  "Wounded warriors",
-  "Disabled veterans",
-  "disabled",
-  "Housing",
-  "housing",
-  "Elderly",
+  "Veterans", 
+  "Military", 
+  "Wounded warriors", 
+  "Disabled veterans", 
+  "disabled", 
+  "Housing", 
+  "housing", 
+  "Elderly", 
   "elderly",
-  "Leader",
-  "leader",
-  "Leadership",
-  "Community leadership",
-  "Executive training",
-  "executive",
-  "Professional development",
-  "professional",
-  "Development",
-  "development"
+  "Leader", 
+  "leader", 
+  "Leadership", 
+  "Community leadership", 
+  "Executive training", 
+  "executive", 
+  "Professional development", 
+  "professional", 
+  "Development", 
+  "development",
+  "Texas",
+  "TX",
+  "Tx",
+  "Southern Region",
+  "West South Central Division",
+  "Gulf States"
 ];
 
+// Anti-Keywords (EXCLUDE grants where the TITLE contains these terms)
+// NOTE: Only applied to title to avoid false positives from descriptions/agency names.
+// State names removed — federal grants mention all states; Texas relevance is handled by filterTexasRelevant().
+
+const ANTI_KEYWORDS = [
+  "early childhood",
+  "preschool",
+  "pre-school",
+  "special needs",
+  "physical therapy",
+  "animal",
+  "wildlife",
+  "environmental",
+  "climate",
+  "agriculture",
+  "arts endowment",
+]
 // Configuration
 const CONFIG = {
   texasGrantPortal: {
@@ -105,7 +124,7 @@ function cleanText(text) {
 // GRANTS.GOV (Federal Grants - Public API)
 // ===========================================
 async function scrapeGrantsGov() {
-  console.log('\n  Grants.gov (Federal Grants API)');
+  console.log('\n[Grants.gov - Federal Grants API]');
   const grants = [];
   
   for (const keyword of KEYWORDS) {
@@ -164,20 +183,20 @@ async function scrapeGrantsGov() {
 // TEXAS GRANT PORTAL (Requires Authentication)
 // ===========================================
 async function scrapeTexasGrantPortal() {
-  console.log('\n Texas Grant Portal');
+  console.log('\n[Texas Grant Portal]');
   
   if (!CONFIG.texasGrantPortal.sessionCookie) {
-    console.log('    Authentication required for this source.');
-    console.log('    To enable: Set TGP_SESSION_COOKIE environment variable');
-    console.log('     or update CONFIG.texasGrantPortal.sessionCookie in this file.');
-    console.log('  ℹ  Steps to get cookie:');
-    console.log('     1. Login to texas.thegrantportal.com in your browser');
-    console.log('     2. Open DevTools (F12) → Application → Cookies');
-    console.log('     3. Copy the session cookie value');
+    console.log('  [!] Authentication required for this source.');
+    console.log('  [i] To enable: Set TGP_SESSION_COOKIE environment variable');
+    console.log('      or update CONFIG.texasGrantPortal.sessionCookie in this file.');
+    console.log('  [i] Steps to get cookie:');
+    console.log('      1. Login to texas.thegrantportal.com in your browser');
+    console.log('      2. Open DevTools (F12) > Application > Cookies');
+    console.log('      3. Copy the session cookie value');
     return [];
   }
   
-  console.log(' Using authenticated session...');
+  console.log('  Using authenticated session...');
   const grants = [];
   
   for (const keyword of KEYWORDS) {
@@ -195,7 +214,7 @@ async function scrapeTexasGrantPortal() {
     
     // Check if redirected to login
     if (response.data.includes('Sign In') && response.data.includes('login')) {
-      console.log('     Session expired - please update cookie');
+      console.log('    [!] Session expired - please update cookie');
       break;
     }
     
@@ -260,17 +279,40 @@ function filterTexasRelevant(grants) {
   });
 }
 
+// Filter out grants containing anti-keywords
+function filterAntiKeywords(grants) {
+  const beforeCount = grants.length;
+  
+  const filtered = grants.filter(grant => {
+    // Only check the title to avoid false positives from descriptions and agency names
+    const text = (grant.title || '').toLowerCase();
+
+    // Check if any anti-keyword is present
+    const hasAntiKeyword = ANTI_KEYWORDS.some(antiKw => text.includes(antiKw.toLowerCase()));
+    
+    // Keep the grant only if it does NOT contain any anti-keyword
+    return !hasAntiKeyword;
+  });
+  
+  const removedCount = beforeCount - filtered.length;
+  if (removedCount > 0) {
+    console.log(`  Filtered out ${removedCount} grants (anti-keywords)`);
+  }
+  
+  return filtered;
+}
+
 // Export to JSON
 function exportToJSON(grants, filename) {
   const filepath = path.join(CONFIG.outputDir, filename);
   fs.writeFileSync(filepath, JSON.stringify(grants, null, 2));
-  console.log(`  ${filename} (${grants.length} grants)`);
+  console.log(`  [JSON] ${filename} (${grants.length} grants)`);
 }
 
 // Export to CSV
 function exportToCSV(grants, filename) {
   if (grants.length === 0) {
-    console.log(`   ${filename} (empty - no grants)`);
+    console.log(`  [CSV] ${filename} (empty - no grants)`);
     return;
   }
   
@@ -291,13 +333,13 @@ function exportToCSV(grants, filename) {
   
   const filepath = path.join(CONFIG.outputDir, filename);
   fs.writeFileSync(filepath, csvRows.join('\n'));
-  console.log(`  ${filename} (${grants.length} grants)`);
+  console.log(`  [CSV] ${filename} (${grants.length} grants)`);
 }
 
 // Print sample grants
 function printSample(grants, count = 5) {
-  console.log(`\n Sample Grants (first ${Math.min(count, grants.length)}):`);
-  console.log('─'.repeat(60));
+  console.log(`\nSample Grants (first ${Math.min(count, grants.length)}):`);
+  console.log('-'.repeat(60));
   
   grants.slice(0, count).forEach((grant, i) => {
     console.log(`\n${i + 1}. ${grant.title}`);
@@ -311,13 +353,15 @@ function printSample(grants, count = 5) {
 
 // Main
 async function main() {
-  console.log('═'.repeat(60));
+  console.log('='.repeat(60));
   console.log('  GRANT SCRAPER');
   console.log('  Leadership Training & Development Grants');
-  console.log('═'.repeat(60));
-  console.log(`\n Keywords (${KEYWORDS.length}):`);
-  KEYWORDS.forEach(kw => console.log(`   • ${kw}`));
-  console.log('─'.repeat(60));
+  console.log('='.repeat(60));
+  console.log(`\nKeywords (${KEYWORDS.length}):`);
+  KEYWORDS.forEach(kw => console.log(`   [+] ${kw}`));
+  console.log(`\nAnti-Keywords (${ANTI_KEYWORDS.length}):`);
+  ANTI_KEYWORDS.forEach(kw => console.log(`   [-] ${kw}`));
+  console.log('-'.repeat(60));
   
   let allGrants = [];
   
@@ -330,20 +374,22 @@ async function main() {
   // Process results
   const uniqueGrants = deduplicateGrants(allGrants);
   const relevantGrants = filterTexasRelevant(uniqueGrants);
+  const finalGrants = filterAntiKeywords(relevantGrants);
   
   // Generate timestamp
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   
-  console.log('\n' + '═'.repeat(60));
+  console.log('\n' + '='.repeat(60));
   console.log('  RESULTS SUMMARY');
-  console.log('═'.repeat(60));
+  console.log('='.repeat(60));
   console.log(`Total scraped: ${allGrants.length}`);
   console.log(`After deduplication: ${uniqueGrants.length}`);
   console.log(`Texas-relevant: ${relevantGrants.length}`);
+  console.log(`After anti-keyword filter: ${finalGrants.length}`);
   
   // By source
   const bySource = {};
-  relevantGrants.forEach(g => {
+  finalGrants.forEach(g => {
     bySource[g.source] = (bySource[g.source] || 0) + 1;
   });
   console.log('\nBy Source:');
@@ -352,21 +398,26 @@ async function main() {
   });
   
   // Export
-  console.log('\n Exporting:');
-  exportToJSON(relevantGrants, `grants_${timestamp}.json`);
-  exportToCSV(relevantGrants, `grants_${timestamp}.csv`);
-  exportToJSON(relevantGrants, 'grants_latest.json');
-  exportToCSV(relevantGrants, 'grants_latest.csv');
+  console.log('\nExporting:');
+  exportToJSON(finalGrants, `grants_${timestamp}.json`);
+  exportToCSV(finalGrants, `grants_${timestamp}.csv`);
+  exportToJSON(finalGrants, 'grants_latest.json');
+  exportToCSV(finalGrants, 'grants_latest.csv');
   
   // Print sample
-  if (relevantGrants.length > 0) {
-    printSample(relevantGrants);
+  if (finalGrants.length > 0) {
+    printSample(finalGrants);
   }
   
-  console.log('\n' + '═'.repeat(60));
+  // Save to database
+  console.log('\nSaving to database...');
+  const dbResult = dbHandler.saveGrants(finalGrants);
+  console.log(`   Inserted: ${dbResult.inserted} | Updated: ${dbResult.updated} | Skipped: ${dbResult.skipped}`);
+
+  console.log('\n' + '='.repeat(60));
   console.log('  COMPLETE');
   console.log(`  Output: ${CONFIG.outputDir}`);
-  console.log('═'.repeat(60));
+  console.log('='.repeat(60));
 }
 
 main().catch(console.error);
