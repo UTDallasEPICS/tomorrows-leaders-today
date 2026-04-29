@@ -199,12 +199,31 @@ function mapGrantWatch(grant) {
   };
 }
 
+// Mapper for the standardized grantScraper.js format: {number, title, agency, url, postedDate, closeDate}
+function mapStandard(grant) {
+  return {
+    opportunityNumber: grant.number || `STD-${generateHash(grant.url || grant.title)}`,
+    title: grant.title,
+    agency: grant.agency || null,
+    openingDate: parseDate(String(grant.postedDate || '')),
+    closingDate: parseDate(String(grant.closeDate || '')),
+    applicationType: null,
+    category: null,
+    applicationLink: grant.url || null,
+    awardFloor: null,
+    awardCeiling: null,
+    totalFundingAmount: null,
+    scrapedAt: new Date().toISOString(),
+  };
+}
+
 // Mapper lookup by source name
 const SOURCE_MAPPERS = {
   'Grants.gov': mapGrantsGov,
   'Texas Grant Portal': mapTexasGrantPortal,
   'Mott Foundation': mapMott,
   'GrantWatch': mapGrantWatch,
+  'grantScraper': mapStandard,
 };
 
 // Save an in-memory grants array directly to the DB (auto-dispatches mapper by source field)
