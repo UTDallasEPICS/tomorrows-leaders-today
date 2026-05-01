@@ -108,7 +108,7 @@ export default function ProfilePage() {
         <div className="col-span-1 space-y-6 sticky top-8 h-fit">
           {/* Profile Header */}
           <div className="bg-white rounded-lg shadow p-6">
-            <ProfileHeader fullname={userInfo.fullName} />
+            {/* <ProfileHeader fullname={userInfo.fullName} /> */}
 
             {/* Basic Info Section */}
             <div className="mt-6">
@@ -161,7 +161,7 @@ export default function ProfilePage() {
             </div>
           </div>
           {/* Grant Fields Section */}
-          <GrantFields />
+         {/* <GrantFields /> */}
 
           {/* Uploaded Documents Section */}
           <div className="bg-white rounded-lg shadow p-6">
@@ -193,7 +193,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <FoundationsContacted />
+         {/* <FoundationsContacted /> */}
         </div>
         <div>
 
