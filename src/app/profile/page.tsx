@@ -3,9 +3,9 @@ import { SquarePen } from 'lucide-react';
 import Image from "next/image";
 import Navbar from "../components/Navbar";
 import { useState } from "react";
-import GrantFields from "./components/GrantFields";
-import ProfileHeader from "./components/ProfileHeader";
-import { FoundationsContacted } from "./components/FoundationsContacted";
+//import GrantFields from "./components/GrantFields";
+//import ProfileHeader from "./components/ProfileHeader";
+//import { FoundationsContacted } from "./components/FoundationsContacted";
 
 export default function ProfilePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
