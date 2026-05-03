@@ -70,7 +70,6 @@ export default async function Homepage() {
           <h1 className="text-3xl font-bold mb-4">Grant Tracker</h1>
           <SearchBar />
           <GrantsTable />
-        
         </section>
       </div>
     </>

@@ -2,7 +2,9 @@
 
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import puppeteer from 'puppeteer';
 
+// Stores URL-function pairs, detailing ways to specifically scrape websites.
 const scraper = {};
 
 scraper["grants.gov"] = async (query, rows = 500) => {
@@ -82,7 +84,7 @@ scraper["mott.org"] = async (query, rows = 100) => {
      *  title: name of grant
      *  agency: agency that gives the grant
      *  status: closed|open|archived
-     *  postedDate: date that grant application opens
+     *  postedDate: date that grant application opens 
      *  closeDate: date that grant application closes
      *  amount: funding amount of grant per recipient
      *  url: link to grant
@@ -104,13 +106,15 @@ scraper["mott.org"] = async (query, rows = 100) => {
             const data = await axios.get(`${searchUrl}&pg=${page}`);
             const $ = cheerio.load(data.data);
 
+            // What does this function do for each ".card6"-class element?
             $('.card6').each((_, el) => {
                 if (grants.length >= rows) return false;
+                
                 const title = $(el).find('a > span').text().trim();
                 let url = $(el).find('a').attr('href');
                 url = url.substring(0, url.length - 1); // remove trailing slash
+                
                 // Get opportunity number from URL
-
                 const opp = url.substring(url.lastIndexOf('/') + 1).replaceAll("-", "");
                 const sponsor = $(el).find('div > p.card6-subtitle').text().trim();
                 const amount = parseInt($(el).find('div > p.card6-amount').text().trim().replaceAll(",", "").substring(1));
@@ -141,6 +145,162 @@ scraper["mott.org"] = async (query, rows = 100) => {
     } catch (e) {
         console.warn("Error fetching mott.org grants:", e);
     }
+    return [];
+}
+
+scraper["txsmartbuy.gov"] = async (rows = 100) => {   
+    /**
+     * Scrapes for grants from "txsmartbuy.gov" and returns an array of grants in .json form.
+     * 
+     * SCHEMA FOR GRANTS: see return statement for inner function 'scrapeAt' 
+     * 
+     * @param {Number} rows the max number of grants to scrape from this url
+     * @returns an array of all grants scraped from this URL, expressed in json.
+     */
+
+    const scrapeAt = async (url, page) => {
+        /**
+         * Goes to a grant's url to scrape specific information form there
+         * 
+         * @param {String} url to the specific grant
+         *      PRECONDITION: the url is absolute and will correctly lead to the 
+         *                      grant if directly pasted into a search bar.
+         * @param {Page} page the headless browser instance that can scrape through
+         *                      the page
+         * @returns a json object depicting information about a grant (see return statement)
+         */
+    
+        try {
+            // Headless browser to get the grants at a PAGE NUMBER
+            console.log("\n\nLINK:", url);
+            await page.goto(url, {waitUntil: 'networkidle0'});
+            await page.waitForSelector("div.esbd-result-body-columns");
+
+            const html = await page.content();
+            const $ = cheerio.load(html);
+
+            // There are four columns to get information from
+            let columns = $(".esbd-result-column.egrant-column");
+            const topLeft = columns.eq(0);
+            const topRight = columns.eq(1);
+            const bottomLeft = columns.eq(2);
+            const bottomRight = columns.eq(3);
+            
+            // Scrape general information
+            const title       = $(".egrant-details-container > .esbd-result-title > h4").text();
+            const topLeftChildren = topLeft.children(".esbd-result-cell");
+            const agency      = topLeftChildren.eq(0).children("p").text();
+            const grantNumber = topLeftChildren.eq(2).children("p").text();
+            
+            // Scrape opening/closing dates and format them
+            const topRightChildren = topRight.children(".esbd-result-cell");
+            let openingDate = topRightChildren.eq(2).children("p").text(); // In the form mm/dd/yyyy
+            let closingDate = topRightChildren.eq(4).children("p").text();
+            const [openingMonth, openingDay, openingYear] = openingDate.split("/");
+            const [closingMonth, closingDay, closingYear] = closingDate.split("/");
+            openingDate = new Date(openingYear, openingMonth - 1, openingDay);
+            closingDate = new Date(closingYear, closingMonth - 1, closingDay);
+            
+            // Scrape categories
+            const bottomLeftChildren = bottomLeft.children(".esbd-result-cell");
+            const category = bottomLeftChildren
+                .children("ul")
+                .children("li")
+                .eq(0).text(); // There can be multiple categories; stick with the first for now
+
+            // Scrape min/max amount and application link
+            const bottomRightChildren   = bottomRight.children(".esbd-result-cell");
+            let totalFundingAmount      = bottomRightChildren.eq(0).children("p").text();
+            let awardFloor              = bottomRightChildren.eq(2).children("p").text();
+            let awardCeiling            = bottomRightChildren.eq(3).children("p").text();
+            let applicationLink         = bottomRightChildren.eq(4).children("a").attr("href");
+            
+            return {
+                title,
+                agency,
+                grantNumber,
+                openingDate,
+                closingDate,
+                category,
+                applicationLink,
+                totalFundingAmount,
+                awardFloor,
+                awardCeiling,
+            };
+        } catch (e) {
+            console.warn("Error fetching grant at url:", url, " due to error:", e);
+        }
+        
+        return [];
+    }
+
+    //----Headless browser to get HTML (website is dynamic)
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    
+    const searchUrl = "https://www.txsmartbuy.gov/esbd-grants";
+    await page.goto(searchUrl);
+    await page.waitForSelector(".global-views-pagination-count");
+    
+    let html = await page.content();
+    //----END headless browser to get HTML
+    
+    try { 
+        //----Get page count
+        const $ = cheerio.load(html);
+        
+        let pageCount = $("p.global-views-pagination-count"); 
+        if (pageCount.length === 0) { // No page selector means there's only one page
+            pageCount = 1;
+        } else {
+            const tokens = pageCount.first().text().match(/\S+/g); // There are two of these "page selectors", so get the text of one
+            pageCount = parseInt(tokens[tokens.length - 2]);
+        }
+        //----END Get page count
+        
+        // Fetch the grants
+        const grants = [];
+        let pageNum = 1;
+        
+        do {
+            //----Fetch page at current page number
+            
+            // Query page using Cheerio 
+            const $ = cheerio.load(html);
+            let grantEntries = $(".esbd-result-row"); // Get all grants on the page
+            
+            if (grantEntries.length === 0) { 
+                break; // No entries to scrape
+            }
+            //----END Fetch page at current page number
+            
+            // Scrape information from each grant entry's page
+            for (let i = 0; i < grantEntries.length; i++) {
+                if (grants.length > rows) {
+                    break;
+                }
+                let el = grantEntries.eq(i);
+                let grantUrl = `https://www.txsmartbuy.gov${$(el).find("div.esbd-result-title > a").attr("href")}`; // Url to detailed information about grant
+                let grantInfo = await scrapeAt(grantUrl, page);
+                grants.push(grantInfo);
+            }
+
+            // Navigate to next page of grants
+            pageNum++; 
+            await page.goto(`https://www.txsmartbuy.gov/esbd-grants?page=${pageNum}`, { waitUntil: 'networkidle0' });
+            
+            html = await page.content();
+        } while (pageNum <= pageCount);
+        
+        await browser.close();
+
+        return grants;
+    } catch (e) {
+        console.warn("Error fetching txsmartbuy.gov grants:", e);
+    }
+    
+    await browser.close();
+    
     return [];
 }
 
