@@ -1,0 +1,19 @@
+name: Scraper Scheduler
+run-name: Run the Grant Scrapers
+on:
+  schedule:
+    # To run at 02:00 CDT every sunday
+    - cron: '0 7 * * 0' # Time is always in UTC, so must add 5 hours
+
+  # For manual running the job for testing
+  workflow-dispatch:
+
+jobs:
+  trigger-gcp-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/Checkout
+      
+      - name: Authenticate to GCP 
+        
