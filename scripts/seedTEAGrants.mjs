@@ -9,7 +9,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
-const BASE_URL = 'https://tealprod.tea.state.tx.us/GrantOpportunities/forms/GrantProgramSearch.aspx';
+const TEA_URL = 'https://tealprod.tea.state.tx.us/GrantOpportunities/forms/GrantProgramSearch.aspx';
 
 function extractAspNetFields($) {
   const fields = {};
@@ -67,7 +67,7 @@ function parseGrantRow($, row, index) {
     title,
     agency: 'Texas Education Agency',
     category,
-    applicationLink: BASE_URL,
+    applicationLink: TEA_URL,
     openingDate,
     closingDate,
     applicationType: 'Grant',
@@ -100,7 +100,7 @@ async function scrapeAllGrants(maxRows = 9999) {
   });
 
   // GET page to harvest hidden fields
-  const initialRes = await session.get(BASE_URL);
+  const initialRes = await session.get(TEA_URL);
   let $ = cheerio.load(initialRes.data);
   let aspFields = extractAspNetFields($);
 
@@ -109,14 +109,14 @@ async function scrapeAllGrants(maxRows = 9999) {
 
   // POST blank search — returns all grants
   const searchRes = await session.post(
-    BASE_URL,
+    TEA_URL,
     buildPostBody(aspFields, {
       [searchInputName]: '',
       [submitBtnName]: 'Search',
       __EVENTTARGET: '',
       __EVENTARGUMENT: '',
     }),
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded', Referer: BASE_URL } }
+    { headers: { 'Content-Type': 'application/x-www-form-urlencoded', Referer: TEA_URL } }
   );
 
   $ = cheerio.load(searchRes.data);
@@ -151,9 +151,9 @@ async function scrapeAllGrants(maxRows = 9999) {
     const next = findNextPagePostback($, currentPage);
     if (!next) break;
     const pageRes = await session.post(
-      BASE_URL,
+      TEA_URL,
       buildPostBody(aspFields, { ...next, [searchInputName]: '' }),
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded', Referer: BASE_URL } }
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded', Referer: TEA_URL } }
     );
     $ = cheerio.load(pageRes.data);
     aspFields = extractAspNetFields($);
