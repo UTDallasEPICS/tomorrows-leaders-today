@@ -32,6 +32,7 @@ model Grant {
   id                 Int       @id @default(autoincrement())
   opportunityNumber  String    @unique
   title              String
+  description        String?
   agency             String?
   openingDate        DateTime?
   closingDate        DateTime?
