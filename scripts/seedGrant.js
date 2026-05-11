@@ -1,4 +1,6 @@
-import { prisma } from "@/library/db";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 const grants = [
   {

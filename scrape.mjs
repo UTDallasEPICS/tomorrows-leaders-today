@@ -21,7 +21,9 @@
 
 import axios from "axios";
 import grantScraper from "./src/library/grantScraper.js";
-import { prisma } from "@/library/db";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // --- CONFIGURATION ------------------------------------------
 
