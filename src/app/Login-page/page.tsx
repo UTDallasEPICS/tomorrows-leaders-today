@@ -2,63 +2,98 @@
 
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { signIn, useSession } from "@/library/auth-client";
 import "./login-page.css";
 
 export default function LoginPage() {
-
-  const router = useRouter(); // Interconnectivity with other pages
-  const session = useSession(); // Auth session
+  const router = useRouter();
+  const session = useSession();
+  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
 
   useEffect(() => {
     if (!session.isPending && !!session.data) {
-      router.push("/home")
+      router.push("/home");
     }
   }, [session]);
 
-  const {
-    register,
-    handleSubmit
-  } = useForm<{ email: string }>({});
+  const { register, handleSubmit } = useForm<{ email: string }>({});
 
   const onSubmit = async ({ email }: { email: string }) => {
-    await signIn.magicLink({
-      email: email,
-    }, {
-      onRequest: () => console.log("sending"),
-      onResponse: () => console.log("received response"),
-      onSuccess: () => console.log("link sent"),
-      onError: (ctx: any) => console.error("failed to send:", ctx),
-    })
+    setStatus("sending");
+    await signIn.magicLink(
+      { email },
+      {
+        onSuccess: () => setStatus("sent"),
+        onError: (ctx: any) => {
+          console.error("failed to send:", ctx);
+          setStatus("idle");
+        },
+      },
+    );
   };
 
   return (
     <div className="login-wrapper">
-      <h1 className="grant-header">
-        <img
-          src="/logo(1).png" // Replace with your actual path
-          alt="logo"
-          className="grant-icon"
-        />
-        GRANT TRACKER
-      </h1>
+      <div className="grant-header">
+        <img src="/logo(1).png" alt="TLT logo" className="grant-icon" />
+        <span className="grant-title">Grant Tracker — TLT</span>
+      </div>
 
-      <form className="login-container" onSubmit={handleSubmit(onSubmit)}>
-        <div className="login-text-block">
-          <h1 className="login-header">Welcome back!</h1>
-          <h2 className="login-subtitle">Sign in with your email below</h2>
-        </div>
+      <div className="login-container">
+        {status === "idle" && (
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            style={{ display: "contents" }}
+          >
+            <p className="login-eyebrow">Sign in</p>
+            <h1 className="login-header">Welcome back</h1>
+            <p className="login-subtitle">
+              Enter your email to receive a sign-in link
+            </p>
 
-        <input type="text" className="text-gray-800 w-full border-b-2" {...register("email", {
-          required: true,
-          pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        })}></input>
+            <label className="login-label" htmlFor="email">
+              Email address
+            </label>
+            <input
+              id="email"
+              type="email"
+              className="login-input"
+              placeholder="you@organization.org"
+              {...register("email", {
+                required: true,
+                pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+              })}
+            />
 
-        <button type="submit" className="login-button">
-          Login with Email
-        </button>
-      </form>
+            <button type="submit" className="login-button">
+              Continue with email
+            </button>
+
+            <p className="login-hint">
+              A magic link will be sent to your inbox. No password needed.
+            </p>
+          </form>
+        )}
+
+        {status === "sending" && (
+          <div className="login-status">
+            <div className="login-spinner" />
+            <p className="login-status-title">Sending your sign-in link...</p>
+            <p className="login-status-sub">This will only take a moment.</p>
+          </div>
+        )}
+
+        {status === "sent" && (
+          <div className="login-status">
+            <div className="login-check">✓</div>
+            <p className="login-status-title">Check your inbox</p>
+            <p className="login-status-sub">
+              A sign-in link has been sent to your email address.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

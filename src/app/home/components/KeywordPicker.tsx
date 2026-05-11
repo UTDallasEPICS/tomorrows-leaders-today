@@ -80,13 +80,13 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
   const availableForInclude = KEYWORDS.filter(
     (kw) =>
       !included.includes(kw) &&
-      kw.toLowerCase().includes(includeSearch.toLowerCase())
+      kw.toLowerCase().includes(includeSearch.toLowerCase()),
   );
 
   const availableForExclude = KEYWORDS.filter(
     (kw) =>
       !excluded.includes(kw) &&
-      kw.toLowerCase().includes(excludeSearch.toLowerCase())
+      kw.toLowerCase().includes(excludeSearch.toLowerCase()),
   );
 
   const activeCount = included.length + excluded.length;

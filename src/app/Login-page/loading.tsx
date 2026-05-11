@@ -1,32 +1,84 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Mail } from "lucide-react";
 
 export default function Loading() {
-  const [message, setMessage] = useState("Sending authentication email...");
+  const [sent, setSent] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setMessage("✅ Authentication email sent! Please check your inbox.");
-    }, 2000);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setSent(true), 2000);
+    return () => clearTimeout(t);
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 text-center px-4">
-      <div className="bg-white shadow-lg rounded-2xl p-8 max-w-sm w-full">
-        <div className="flex justify-center mb-6">
-          <Loader2 className="animate-spin text-blue-500 w-10 h-10" />
-        </div>
-        <h2 className="text-xl font-semibold mb-2 text-gray-800">
-          Checking your credentials...
-        </h2>
-        <p className="text-gray-600 mb-4">{message}</p>
-        <div className="flex justify-center">
-          <Mail className="text-gray-400 w-8 h-8" />
-        </div>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "#111008",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "'Montserrat', sans-serif",
+      }}
+    >
+      <div
+        style={{
+          border: "1px solid #c9960c",
+          background: "#1c1601",
+          padding: "40px 36px",
+          width: "100%",
+          maxWidth: 400,
+          boxSizing: "border-box" as const,
+          textAlign: "center",
+        }}
+      >
+        {!sent ? (
+          <>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                border: "2px solid #c9960c",
+                borderTopColor: "transparent",
+                borderRadius: "50%",
+                margin: "0 auto 24px",
+                animation: "spin 0.8s linear infinite",
+              }}
+            />
+            <p
+              style={{
+                margin: 0,
+                fontSize: 14,
+                color: "#f5e6b8",
+                fontWeight: 500,
+              }}
+            >
+              Sending your sign-in link...
+            </p>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 28, color: "#c9960c", marginBottom: 16 }}>
+              ✓
+            </div>
+            <p
+              style={{
+                margin: "0 0 8px",
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#f5e6b8",
+              }}
+            >
+              Check your inbox
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: "#8a7a4a" }}>
+              A sign-in link has been sent to your email address.
+            </p>
+          </>
+        )}
       </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
