@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Info, X } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { ChevronDown, ChevronUp, X, ExternalLink, History } from "lucide-react";
 import Pagination from "@mui/material/Pagination";
 import Stack from "@mui/material/Stack";
+
+type GrantLog = {
+  id: number;
+  updatedAt: string;
+  newStatus: string;
+  originalStatus: string | null;
+  user: { name: string };
+};
 
 type GrantRow = {
   id: number;
@@ -14,13 +22,7 @@ type GrantRow = {
   fund: string;
   status: string;
   applicationLink: string | null;
-  logs: {
-    id: number;
-    updatedAt: string;
-    newStatus: string;
-    originalStatus: string | null;
-    user: { name: string };
-  }[];
+  logs: GrantLog[];
 };
 
 type SortField =
@@ -31,13 +33,47 @@ type SortField =
   | "fund"
   | "status";
 
-const PAGE_SIZE = 25;
-
 type GrantsTableProps = {
   searchTerm?: string;
   includedKeywords?: string[];
   excludedKeywords?: string[];
 };
+
+const PAGE_SIZE = 25;
+
+const STATUS_STYLES: Record<string, { background: string; color: string }> = {
+  APPLIED: { background: "#1a3a1a", color: "#7ec87e" },
+  APPROVED: { background: "#1a3a1a", color: "#7ec87e" },
+  WAITING_FOR_FEEDBACK: { background: "#2a2000", color: "#e8b820" },
+  IN_PROGRESS: { background: "#2a2000", color: "#e8b820" },
+  LOI: { background: "#1a2a3a", color: "#7eaec8" },
+  DECLINED: { background: "#3a1a1a", color: "#c87e7e" },
+  NOT_QUALIFIED: { background: "#3a1a1a", color: "#c87e7e" },
+  NOT_APPLIED: { background: "#2a2a2a", color: "#aaaaaa" },
+  AVAILABLE: { background: "#2a2a2a", color: "#aaaaaa" },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const style = STATUS_STYLES[status] ?? {
+    background: "#2a2a2a",
+    color: "#aaaaaa",
+  };
+  const label = status.replace(/_/g, " ");
+  return (
+    <span
+      style={{
+        ...style,
+        fontSize: 11,
+        fontWeight: 600,
+        padding: "3px 8px",
+        letterSpacing: "0.04em",
+        display: "inline-block",
+      }}
+    >
+      {label}
+    </span>
+  );
+}
 
 export default function GrantsTable({
   searchTerm = "",
@@ -45,45 +81,53 @@ export default function GrantsTable({
   excludedKeywords = [],
 }: GrantsTableProps) {
   const [grants, setGrants] = useState<GrantRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeSort, setActiveSort] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-  const [showInfoModal, setShowInfoModal] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [showLogsFor, setShowLogsFor] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Fetch grants from database
-  useEffect(() => {
-    async function load() {
-      const res = await fetch("/api/grants"); // Fetch grants from database
-      const data = await res.json();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/grants");
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const data: Record<string, unknown>[] = await res.json();
 
-      // Parse array of grants into GrantRow
-      const mapped: GrantRow[] = data.map((g: any) => ({
-        id: g.id,
-        title: g.title,
-        agency: g.agency ?? "N/A",
+      const mapped: GrantRow[] = data.map((g) => ({
+        id: g.id as number,
+        title: (g.title as string) ?? "Untitled",
+        agency: (g.agency as string) ?? "N/A",
         release: g.openingDate
-          ? new Date(g.openingDate).toLocaleDateString()
+          ? new Date(g.openingDate as string).toLocaleDateString()
           : "N/A",
         deadline: g.closingDate
-          ? new Date(g.closingDate).toLocaleDateString()
+          ? new Date(g.closingDate as string).toLocaleDateString()
           : "N/A",
-        fund: g.opportunityNumber ?? "N/A",
-        status: g.logs?.[0]?.newStatus ?? "Not Applied",
-        applicationLink: g.applicationLink ?? null,
-        logs: g.logs ?? [],
+        fund: (g.opportunityNumber as string) ?? "N/A",
+        status: (g.logs as GrantLog[])?.[0]?.newStatus ?? "NOT_APPLIED",
+        applicationLink: (g.applicationLink as string) ?? null,
+        logs: (g.logs as GrantLog[]) ?? [],
       }));
 
       setGrants(mapped);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load grants.");
+    } finally {
+      setLoading(false);
     }
-
-    load();
   }, []);
 
-  // Reset to page 1 when filters change
+  useEffect(() => {
+    load();
+  }, [load]);
+
   useEffect(() => {
     setCurrentPage(1);
-    setExpandedIndex(null);
+    setExpandedId(null);
   }, [
     searchTerm,
     activeSort,
@@ -92,36 +136,40 @@ export default function GrantsTable({
     excludedKeywords,
   ]);
 
-  const categories = [
+  const categories: { key: SortField; label: string }[] = [
     { key: "title", label: "Grant" },
     { key: "agency", label: "Agency" },
     { key: "release", label: "Release" },
     { key: "deadline", label: "Deadline" },
     { key: "fund", label: "Opportunity #" },
     { key: "status", label: "Status" },
-  ] as { key: SortField; label: string }[];
+  ];
 
-  // ─── FILTERING PIPELINE ──────────────────────────────────
-  // 1. Search bar filter
-  let filtered = searchTerm
-    ? grants.filter((g) => {
-        const term = searchTerm.toLowerCase();
-        return (
-          g.title.toLowerCase().includes(term) ||
-          g.agency.toLowerCase().includes(term)
-        );
-      })
-    : grants;
+  const handleSort = (key: SortField) => {
+    if (activeSort === key) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setActiveSort(key);
+      setSortDirection("asc");
+    }
+  };
 
-  // 2. Include filter — keep only grants matching at least one included keyword
+  // Filtering
+  let filtered = grants;
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    filtered = filtered.filter(
+      (g) =>
+        g.title.toLowerCase().includes(term) ||
+        g.agency.toLowerCase().includes(term),
+    );
+  }
   if (includedKeywords.length > 0) {
     filtered = filtered.filter((g) => {
       const text = `${g.title} ${g.agency}`.toLowerCase();
       return includedKeywords.some((kw) => text.includes(kw.toLowerCase()));
     });
   }
-
-  // 3. Exclude filter — remove grants matching any excluded keyword
   if (excludedKeywords.length > 0) {
     filtered = filtered.filter((g) => {
       const text = `${g.title} ${g.agency}`.toLowerCase();
@@ -129,230 +177,348 @@ export default function GrantsTable({
     });
   }
 
-  // ─── SORTING ─────────────────────────────────────────────
-  const sortedGrants = [...filtered].sort((a, b) => {
+  // Sorting
+  const sorted = [...filtered].sort((a, b) => {
     if (!activeSort) return 0;
-
-    let valA: string = String(a[activeSort] ?? "");
-    let valB: string = String(b[activeSort] ?? "");
-
     if (activeSort === "release" || activeSort === "deadline") {
-      const numA = valA === "N/A" ? 0 : new Date(valA).getTime();
-      const numB = valB === "N/A" ? 0 : new Date(valB).getTime();
-      return sortDirection === "asc" ? numA - numB : numB - numA;
+      const tA =
+        a[activeSort] === "N/A" ? 0 : new Date(a[activeSort]).getTime();
+      const tB =
+        b[activeSort] === "N/A" ? 0 : new Date(b[activeSort]).getTime();
+      return sortDirection === "asc" ? tA - tB : tB - tA;
     }
-
-    if (activeSort === "fund") {
-      const numA = valA === "N/A" ? 0 : Number(valA.replace(/[$,]/g, ""));
-      const numB = valB === "N/A" ? 0 : Number(valB.replace(/[$,]/g, ""));
-      return sortDirection === "asc" ? numA - numB : numB - numA;
-    }
-
-    const cmp = valA.localeCompare(valB);
+    const cmp = String(a[activeSort] ?? "").localeCompare(
+      String(b[activeSort] ?? ""),
+    );
     return sortDirection === "asc" ? cmp : -cmp;
   });
 
-  // ─── PAGINATION ──────────────────────────────────────────
-  const totalPages = Math.ceil(sortedGrants.length / PAGE_SIZE);
-  const paginatedGrants = sortedGrants.slice(
+  // Pagination
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const paginated = sorted.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   );
 
-  const handlePageChange = (
-    _event: React.ChangeEvent<unknown>,
-    page: number,
-  ) => {
+  const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     setCurrentPage(page);
-    setExpandedIndex(null);
+    setExpandedId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ── Loading state ──────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            border: "2px solid #B89A49",
+            borderTopColor: "transparent",
+            borderRadius: "50%",
+            margin: "0 auto 12px",
+            animation: "spin 0.8s linear infinite",
+          }}
+        />
+        <p className="text-sm text-gray-500">Loading grants...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // ── Error state ────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="bg-white border border-red-200 rounded-lg p-12 text-center">
+        <p className="text-sm font-semibold text-red-600 mb-2">
+          Failed to load grants
+        </p>
+        <p className="text-xs text-gray-500 mb-4">{error}</p>
+        <button
+          onClick={load}
+          className="px-4 py-2 text-sm bg-[#B89A49] text-white rounded hover:bg-[#a08640] transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-[#E8DCC8] rounded-lg shadow overflow-hidden">
-      <div className="grid grid-cols-6 bg-[#B89A49] text-white">
-        {categories.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => {
-              if (activeSort === key) {
-                setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-              } else {
-                setActiveSort(key);
-                setSortDirection("asc");
-              }
-            }}
-            className="p-3 text-left flex items-center justify-between hover:bg-opacity-80"
-          >
-            <span className={activeSort === key ? "font-bold" : ""}>
-              {label}
-            </span>
-            {activeSort === key ? (
-              sortDirection === "asc" ? (
-                <ChevronDown className="w-4 h-4" />
-              ) : (
-                <ChevronUp className="w-4 h-4" />
-              )
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Render each grant by mapping to a div element*/}
-      <div className="divide-y divide-gray-300">
-        {paginatedGrants.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            No grants match the current filters.
-          </div>
-        )}
-
-        {paginatedGrants.map((grant, index) => {
-          const isExpanded = expandedIndex === index;
-
-          return (
-            <div key={grant.id}>
-              <div
-                className={`grid grid-cols-6 cursor-pointer ${
-                  isExpanded
-                    ? "bg-[#E8DCC8] border-b border-gray-300 shadow-sm relative z-10"
-                    : "bg-white hover:bg-gray-50"
-                }`}
-                onClick={() => setExpandedIndex(isExpanded ? null : index)}
+    <>
+      <div className="bg-[#E8DCC8] rounded-lg shadow overflow-hidden">
+        {/* Header row */}
+        <div className="hidden md:grid grid grid-cols-6 bg-[#B89A49] text-white">
+          {categories.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => handleSort(key)}
+              className="p-3 text-left flex items-center justify-between hover:bg-black/10 transition-colors"
+            >
+              <span
+                className={`text-sm ${activeSort === key ? "font-bold" : "font-medium"}`}
               >
-                <div className="p-3">{grant.title}</div>
-                <div className="p-3">{grant.agency}</div>
-                <div className="p-3">{grant.release}</div>
-                <div className="p-3">{grant.deadline}</div>
-                <div className="p-3">{grant.fund}</div>
-                <div className="p-3">{grant.status}</div>
-              </div>
-
-              {isExpanded && (
-                <div className="bg-[#E8DCC8] p-6 relative shadow-inner">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowInfoModal(index);
-                    }}
-                    className="absolute top-4 right-4 hover:text-gray-800 transition-colors"
-                  >
-                    <Info className="w-5 h-5 text-gray-600" />
-                  </button>
-
-                  <div className="flex gap-4">
-                    <button
-                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowInfoModal(index);
-                      }}
-                    >
-                      More Information
-                    </button>
-
-                    <button
-                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (grant.applicationLink)
-                          window.open(grant.applicationLink, "_blank");
-                      }}
-                    >
-                      Website
-                    </button>
-                  </div>
-                </div>
+                {label}
+              </span>
+              {activeSort === key ? (
+                sortDirection === "asc" ? (
+                  <ChevronUp className="w-4 h-4 flex-shrink-0" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                )
+              ) : (
+                <ChevronDown className="w-4 h-4 flex-shrink-0 opacity-40" />
               )}
+            </button>
+          ))}
+        </div>
 
-              {showInfoModal === index && (
-                <div
-                  className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-                  onClick={() => setShowInfoModal(null)}
-                >
-                  <div
-                    className="bg-white rounded-lg p-6 max-w-md w-full m-4"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold">
-                        Status Update History
-                      </h3>
-                      <button
-                        onClick={() => setShowInfoModal(null)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      {grant.logs.length === 0 && (
-                        <p className="text-gray-500">No status updates yet.</p>
-                      )}
-
-                      {grant.logs.map((log, i) => (
-                        <div
-                          key={i}
-                          className="border-l-2 border-gray-200 pl-4"
-                        >
-                          <p className="text-sm text-gray-500">
-                            {new Date(log.updatedAt).toLocaleString()}
-                          </p>
-                          <p className="text-gray-700">
-                            {log.user.name} changed status from{" "}
-                            <span className="font-medium">
-                              {log.originalStatus ?? "None"}
-                            </span>{" "}
-                            to{" "}
-                            <span className="font-medium">{log.newStatus}</span>
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+        {/* Rows */}
+        <div className="divide-y divide-gray-300">
+          {paginated.length === 0 ? (
+            <div className="p-12 text-center text-gray-500 text-sm">
+              No grants match the current filters.
             </div>
-          );
-        })}
-      </div>
+          ) : (
+            paginated.map((grant) => {
+              const isExpanded = expandedId === grant.id;
+              return (
+                <div key={grant.id}>
+                  {/* Desktop row — hidden on mobile */}
+                  <div
+                    className={`hidden md:grid grid-cols-6 cursor-pointer transition-colors ${
+                      isExpanded ? "bg-[#E8DCC8]" : "bg-white hover:bg-gray-50"
+                    }`}
+                    onClick={() => setExpandedId(isExpanded ? null : grant.id)}
+                    role="row"
+                    aria-expanded={isExpanded}
+                  >
+                    <div className="p-3 text-sm truncate" title={grant.title}>
+                      {grant.title}
+                    </div>
+                    <div className="p-3 text-sm truncate" title={grant.agency}>
+                      {grant.agency}
+                    </div>
+                    <div className="p-3 text-sm">{grant.release}</div>
+                    <div className="p-3 text-sm">{grant.deadline}</div>
+                    <div className="p-3 text-sm truncate">{grant.fund}</div>
+                    <div className="p-3 text-sm">
+                      <StatusBadge status={grant.status} />
+                    </div>
+                  </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-300">
-          <span className="text-sm text-gray-600">
-            Showing {(currentPage - 1) * PAGE_SIZE + 1}–
-            {Math.min(currentPage * PAGE_SIZE, sortedGrants.length)} of{" "}
-            {sortedGrants.length} grants
-          </span>
-          <Stack spacing={2}>
-            <Pagination
-              count={totalPages}
-              page={currentPage}
-              onChange={handlePageChange}
-              shape="rounded"
-              size="large"
-              sx={{
-                "& .MuiPaginationItem-root": {
-                  fontSize: "1.1rem",
-                  minWidth: "48px",
-                  height: "48px",
-                  margin: "0 6px",
-                  "&.Mui-selected": {
-                    backgroundColor: "#B89A49",
-                    color: "white",
-                    "&:hover": {
-                      backgroundColor: "#a08640",
+                  {/* Mobile card — hidden on desktop */}
+                  <div
+                    className={`md:hidden cursor-pointer transition-colors border-b border-gray-200 ${
+                      isExpanded ? "bg-[#E8DCC8]" : "bg-white"
+                    }`}
+                    onClick={() => setExpandedId(isExpanded ? null : grant.id)}
+                  >
+                    <div className="p-4 flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {grant.title}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                          {grant.agency}
+                        </p>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                          <span>Due: {grant.deadline}</span>
+                          <span>·</span>
+                          <span>{grant.fund}</span>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 mt-0.5">
+                        <StatusBadge status={grant.status} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expanded panel — same for both */}
+                  {isExpanded && (
+                    <div className="bg-[#E8DCC8] px-4 md:px-6 py-4 flex items-center gap-3 border-t border-[#d4c5a0]">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowLogsFor(grant.id);
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+                      >
+                        <History className="w-4 h-4" />
+                        <span className="hidden sm:inline">Status History</span>
+                        <span className="sm:hidden">History</span>
+                      </button>
+                      {grant.applicationLink ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(
+                              grant.applicationLink!,
+                              "_blank",
+                              "noopener,noreferrer",
+                            );
+                          }}
+                          className="flex items-center gap-2 px-3 py-2 text-sm bg-[#B89A49] text-white rounded hover:bg-[#a08640] transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Apply
+                        </button>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">
+                          No application link
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-300">
+            <span className="text-sm text-gray-600">
+              Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+              {Math.min(currentPage * PAGE_SIZE, sorted.length)} of{" "}
+              {sorted.length} grants
+            </span>
+            <Stack spacing={2}>
+              <Pagination
+                count={totalPages}
+                page={currentPage}
+                onChange={handlePageChange}
+                shape="rounded"
+                size="large"
+                sx={{
+                  "& .MuiPaginationItem-root": {
+                    fontSize: "1rem",
+                    minWidth: "40px",
+                    height: "40px",
+                    "&.Mui-selected": {
+                      backgroundColor: "#B89A49",
+                      color: "white",
+                      "&:hover": { backgroundColor: "#a08640" },
                     },
                   },
-                },
+                }}
+              />
+            </Stack>
+          </div>
+        )}
+      </div>
+
+      {/* Status history modal */}
+      {showLogsFor !== null &&
+        (() => {
+          const grant = grants.find((g) => g.id === showLogsFor);
+          if (!grant) return null;
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 50,
               }}
-            />
-          </Stack>
-        </div>
-      )}
-    </div>
+              onClick={() => setShowLogsFor(null)}
+            >
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: 8,
+                  padding: 24,
+                  maxWidth: 480,
+                  width: "100%",
+                  margin: "0 16px",
+                  maxHeight: "80vh",
+                  overflowY: "auto",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: 16,
+                  }}
+                >
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
+                      Status History
+                    </h3>
+                    <p
+                      style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}
+                    >
+                      {grant.title}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowLogsFor(null)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#888",
+                      padding: 4,
+                    }}
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {grant.logs.length === 0 ? (
+                  <p style={{ color: "#888", fontSize: 14 }}>
+                    No status updates yet.
+                  </p>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 12,
+                    }}
+                  >
+                    {grant.logs.map((log, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          borderLeft: "2px solid #B89A49",
+                          paddingLeft: 12,
+                        }}
+                      >
+                        <p style={{ margin: 0, fontSize: 12, color: "#888" }}>
+                          {new Date(log.updatedAt).toLocaleString()}
+                        </p>
+                        <p
+                          style={{
+                            margin: "4px 0 0",
+                            fontSize: 14,
+                            color: "#333",
+                          }}
+                        >
+                          <strong>{log.user?.name ?? "Unknown"}</strong> changed
+                          status from{" "}
+                          <strong>
+                            {log.originalStatus?.replace(/_/g, " ") ?? "None"}
+                          </strong>{" "}
+                          to <strong>{log.newStatus.replace(/_/g, " ")}</strong>
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+    </>
   );
 }

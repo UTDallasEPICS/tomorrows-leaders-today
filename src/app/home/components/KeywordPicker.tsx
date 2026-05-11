@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Search, X } from "lucide-react";
 
 const KEYWORDS = [
@@ -41,41 +41,55 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
   const [included, setIncluded] = useState<string[]>([]);
   const [excluded, setExcluded] = useState<string[]>([]);
 
-  function addToInclude(keyword: string) {
-    const newExcluded = excluded.filter((k) => k !== keyword);
-    const newIncluded = [...included, keyword];
-    setIncluded(newIncluded);
-    setExcluded(newExcluded);
-    onFilterChange(newIncluded, newExcluded);
-  }
+  const addToInclude = useCallback(
+    (keyword: string) => {
+      if (included.includes(keyword)) return;
+      const newExcluded = excluded.filter((k) => k !== keyword);
+      const newIncluded = [...included, keyword];
+      setIncluded(newIncluded);
+      setExcluded(newExcluded);
+      onFilterChange(newIncluded, newExcluded);
+    },
+    [included, excluded, onFilterChange],
+  );
 
-  function addToExclude(keyword: string) {
-    const newIncluded = included.filter((k) => k !== keyword);
-    const newExcluded = [...excluded, keyword];
-    setIncluded(newIncluded);
-    setExcluded(newExcluded);
-    onFilterChange(newIncluded, newExcluded);
-  }
+  const addToExclude = useCallback(
+    (keyword: string) => {
+      if (excluded.includes(keyword)) return;
+      const newIncluded = included.filter((k) => k !== keyword);
+      const newExcluded = [...excluded, keyword];
+      setIncluded(newIncluded);
+      setExcluded(newExcluded);
+      onFilterChange(newIncluded, newExcluded);
+    },
+    [included, excluded, onFilterChange],
+  );
 
-  function removeFromInclude(keyword: string) {
-    const newIncluded = included.filter((k) => k !== keyword);
-    setIncluded(newIncluded);
-    onFilterChange(newIncluded, excluded);
-  }
+  const removeFromInclude = useCallback(
+    (keyword: string) => {
+      const newIncluded = included.filter((k) => k !== keyword);
+      setIncluded(newIncluded);
+      onFilterChange(newIncluded, excluded);
+    },
+    [included, excluded, onFilterChange],
+  );
 
-  function removeFromExclude(keyword: string) {
-    const newExcluded = excluded.filter((k) => k !== keyword);
-    setExcluded(newExcluded);
-    onFilterChange(included, newExcluded);
-  }
+  const removeFromExclude = useCallback(
+    (keyword: string) => {
+      const newExcluded = excluded.filter((k) => k !== keyword);
+      setExcluded(newExcluded);
+      onFilterChange(included, newExcluded);
+    },
+    [included, excluded, onFilterChange],
+  );
 
-  function clearAll() {
+  const clearAll = useCallback(() => {
     setIncluded([]);
     setExcluded([]);
     setIncludeSearch("");
     setExcludeSearch("");
     onFilterChange([], []);
-  }
+  }, [onFilterChange]);
 
   const availableForInclude = KEYWORDS.filter(
     (kw) =>
@@ -97,20 +111,20 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
         {/* Header */}
         <div className="bg-[#B89A49] px-4 py-3 flex items-center justify-between">
           <h2 className="text-white font-semibold text-sm tracking-wide">
-            Keyword Picker
+            Keyword Filter
           </h2>
           {activeCount > 0 && (
             <button
               onClick={clearAll}
               className="text-white/80 text-xs hover:text-white transition-colors underline"
             >
-              Clear all
+              Clear all ({activeCount})
             </button>
           )}
         </div>
 
         <div>
-          {/* ═══ INCLUDE CARD ═══ */}
+          {/* INCLUDE */}
           <div className="px-4 pt-4">
             <div className="rounded-lg border-2 border-green-400 bg-green-50/30 overflow-hidden">
               <div className="px-3 pt-3 pb-2">
@@ -121,15 +135,17 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
 
               <div className="px-3 pb-2">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <Search
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"
+                    aria-hidden="true"
+                  />
                   <input
                     type="text"
                     placeholder="Search keywords..."
                     value={includeSearch}
                     onChange={(e) => setIncludeSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-green-200 rounded-md
-                               outline-none focus:border-green-400 focus:ring-1 focus:ring-green-300/40
-                               placeholder:text-gray-400 transition-all"
+                    aria-label="Search include keywords"
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-green-200 rounded-md outline-none focus:border-green-400 focus:ring-1 focus:ring-green-300/40 placeholder:text-gray-400 transition-all"
                   />
                 </div>
               </div>
@@ -143,14 +159,13 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
                     {included.map((kw) => (
                       <span
                         key={kw}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium
-                                   bg-green-200 text-green-900 rounded-full
-                                   hover:bg-green-300 transition-all group cursor-default"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-green-200 text-green-900 rounded-full hover:bg-green-300 transition-all group cursor-default"
                       >
                         {kw}
                         <button
                           onClick={() => removeFromInclude(kw)}
-                          className="opacity-50 group-hover:opacity-100"
+                          aria-label={`Remove ${kw} from include`}
+                          className="opacity-50 group-hover:opacity-100 transition-opacity"
                         >
                           <X className="w-2.5 h-2.5" />
                         </button>
@@ -174,10 +189,8 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
                       <button
                         key={kw}
                         onClick={() => addToInclude(kw)}
-                        className="px-2.5 py-1 text-[11px] font-medium rounded-full border
-                                   bg-white border-gray-200 text-gray-600
-                                   hover:bg-green-100 hover:border-green-300 hover:text-green-800
-                                   active:scale-95 transition-all"
+                        aria-label={`Include ${kw}`}
+                        className="px-2.5 py-1 text-[11px] font-medium rounded-full border bg-white border-gray-200 text-gray-600 hover:bg-green-100 hover:border-green-300 hover:text-green-800 active:scale-95 transition-all"
                       >
                         {kw}
                       </button>
@@ -188,7 +201,7 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
             </div>
           </div>
 
-          {/* ═══ EXCLUDE CARD ═══ */}
+          {/* EXCLUDE */}
           <div className="px-4 pt-3 pb-4">
             <div className="rounded-lg border-2 border-red-300 bg-red-50/30 overflow-hidden">
               <div className="px-3 pt-3 pb-2">
@@ -199,15 +212,17 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
 
               <div className="px-3 pb-2">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <Search
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"
+                    aria-hidden="true"
+                  />
                   <input
                     type="text"
                     placeholder="Search keywords..."
                     value={excludeSearch}
                     onChange={(e) => setExcludeSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-red-200 rounded-md
-                               outline-none focus:border-red-400 focus:ring-1 focus:ring-red-300/40
-                               placeholder:text-gray-400 transition-all"
+                    aria-label="Search exclude keywords"
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-red-200 rounded-md outline-none focus:border-red-400 focus:ring-1 focus:ring-red-300/40 placeholder:text-gray-400 transition-all"
                   />
                 </div>
               </div>
@@ -221,14 +236,13 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
                     {excluded.map((kw) => (
                       <span
                         key={kw}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium
-                                   bg-red-200 text-red-900 rounded-full
-                                   hover:bg-red-300 transition-all group cursor-default"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-red-200 text-red-900 rounded-full hover:bg-red-300 transition-all group cursor-default"
                       >
                         {kw}
                         <button
                           onClick={() => removeFromExclude(kw)}
-                          className="opacity-50 group-hover:opacity-100"
+                          aria-label={`Remove ${kw} from exclude`}
+                          className="opacity-50 group-hover:opacity-100 transition-opacity"
                         >
                           <X className="w-2.5 h-2.5" />
                         </button>
@@ -252,10 +266,8 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
                       <button
                         key={kw}
                         onClick={() => addToExclude(kw)}
-                        className="px-2.5 py-1 text-[11px] font-medium rounded-full border
-                                   bg-white border-gray-200 text-gray-600
-                                   hover:bg-red-100 hover:border-red-300 hover:text-red-800
-                                   active:scale-95 transition-all"
+                        aria-label={`Exclude ${kw}`}
+                        className="px-2.5 py-1 text-[11px] font-medium rounded-full border bg-white border-gray-200 text-gray-600 hover:bg-red-100 hover:border-red-300 hover:text-red-800 active:scale-95 transition-all"
                       >
                         {kw}
                       </button>

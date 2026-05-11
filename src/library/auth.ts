@@ -68,7 +68,7 @@ export const auth = betterAuth({
                                 </tr>
                             </table>
                             <p style="margin: 30px 0 0; font-size: 12px; color: #888888; line-height: 18px;">
-                                If you didn’t create an account with TLT, please ignore this email.<br>
+                                If you didn't create an account with TLT, please ignore this email.<br>
                                 This link will expire in 24 hours.
                             </p>
                             </td>
