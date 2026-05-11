@@ -109,7 +109,7 @@ export const protect = async () => {
 
     if (!session) {
         // Bad session, redirect to login
-        redirect("/Login-page");
+        redirect("/login");
     }
 
     return session;

@@ -16,7 +16,7 @@ const Navbar = () => {
 
   const handleSignOut = async () => {
     await signOut();
-    router.push("/Login-page");
+    router.push("/login");
   };
 
   useEffect(() => {

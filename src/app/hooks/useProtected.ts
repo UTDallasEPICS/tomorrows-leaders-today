@@ -10,7 +10,7 @@ export const useProtected = () => {
 
 	useEffect(() => {
 		if (!session.isPending && !session.data) {
-			router.push("/Login-page")
+			router.push("/login")
 		}
 	}, [session]);
 }

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import { signIn, useSession } from "@/library/auth-client";
-import "./login-page.css";
+import "./login.css";
 
 export default function LoginPage() {
   const router = useRouter();
