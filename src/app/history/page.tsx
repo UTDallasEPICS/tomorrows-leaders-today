@@ -1,192 +1,196 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState, useCallback } from "react";
 import Navbar from "../components/Navbar";
-import SubmittedGrantsTable from './components/SubmittedGrantsTable';
-import Dashboard from './components/Dashboard';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import SubmittedGrantsTable from "./components/SubmittedGrantsTable";
+import Dashboard from "./components/Dashboard";
+import { protect } from "@/library/auth";
 
-type StatusUpdate = {
-    timestamp: string;
-    userId: string;
-    fromStatus: string;
-    toStatus: string;
+export type StatusUpdate = {
+  timestamp: string;
+  userId: string;
+  fromStatus: string;
+  toStatus: string;
 };
 
-type Grant = {
-    grant: string;
-    agency: string;
-    release: string;
-    deadline: string;
-    fund: string;
-    status: 'Applied' | 'Rejected' | 'Accepted';
-    company: string;
-    description: string;
-    website?: string;
-    statusUpdates: StatusUpdate[];
-}
+export type HistoryGrant = {
+  id: number;
+  grant: string;
+  agency: string;
+  release: string;
+  deadline: string;
+  fund: string;
+  status: string;
+  company: string;
+  description: string;
+  website?: string;
+  statusUpdates: StatusUpdate[];
+};
 
 export default function HistoryPage() {
-  // Sample data - only submitted applications with status updates
-  const [grants] = useState<Grant[]>([
-    {
-      grant: "Community Development Fund",
-      agency: "Dell Foundation",
-      release: "10/15/2025",
-      deadline: "11/30/2025",
-      fund: "$175,000",
-      status: "Applied",
-      company: "Dell Foundation: Community Support Initiative",
-      description: "Supporting local community development through educational programs.",
-      website: "https://dell.foundation/grants",
-      statusUpdates: [
-        {
-          timestamp: "11/05/25 15:45 PM",
-          userId: "1234",
-          fromStatus: "Draft",
-          toStatus: "Applied"
-        },
-        {
-          timestamp: "11/04/25 11:20 AM",
-          userId: "1234",
-          fromStatus: "Start",
-          toStatus: "Draft"
-        }
-      ]
-    },
-    {
-      grant: "STEM Education Initiative",
-      agency: "IBM Foundation",
-      release: "08/01/2025",
-      deadline: "10/15/2025",
-      fund: "$200,000",
-      status: "Accepted",
-      company: "IBM Foundation: STEM Education Program",
-      description: "Advancing STEM education in underserved communities.",
-      website: "https://ibm.org/grants",
-      statusUpdates: [
-        {
-          timestamp: "11/05/25 16:30 PM",
-          userId: "1234",
-          fromStatus: "Applied",
-          toStatus: "Accepted"
-        },
-        {
-          timestamp: "11/01/25 09:45 AM",
-          userId: "1234",
-          fromStatus: "Draft",
-          toStatus: "Applied"
-        }
-      ]
-    },
-    {
-      grant: "Digital Literacy Program",
-      agency: "Microsoft Foundation",
-      release: "07/01/2025",
-      deadline: "09/30/2025",
-      fund: "$150,000",
-      status: "Rejected",
-      company: "Microsoft Foundation: Digital Skills Initiative",
-      description: "Enhancing digital literacy across educational institutions.",
-      website: "https://microsoft.foundation/grants",
-      statusUpdates: [
-        {
-          timestamp: "11/04/25 14:20 PM",
-          userId: "1234",
-          fromStatus: "Applied",
-          toStatus: "Rejected"
-        },
-        {
-          timestamp: "10/30/25 11:15 AM",
-          userId: "1234",
-          fromStatus: "Draft",
-          toStatus: "Applied"
-        }
-      ]
-    }
-  ]);
+  const [grants, setGrants] = useState<HistoryGrant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Application History Report', 14, 20);
-    
-    // Add date
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const currentDate = new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    doc.text(`Generated on: ${currentDate}`, 14, 28);
-    
-    // Prepare table data
-    const tableData = grants.map(grant => [
-      grant.grant,
-      grant.agency,
-      grant.deadline,
-      grant.fund,
-      grant.status,
-      grant.company
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/grants?history=true");
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const data = await res.json();
+
+      const mapped: HistoryGrant[] = data.map((g: any) => ({
+        id: g.id,
+        grant: g.title ?? "Untitled",
+        agency: g.agency ?? "N/A",
+        release: g.openingDate
+          ? new Date(g.openingDate).toLocaleDateString()
+          : "N/A",
+        deadline: g.closingDate
+          ? new Date(g.closingDate).toLocaleDateString()
+          : "N/A",
+        fund: g.opportunityNumber ?? "N/A",
+        status: g.logs?.[0]?.newStatus ?? "NOT_APPLIED",
+        company: g.agency ?? "N/A",
+        description: g.title ?? "",
+        website: g.applicationLink ?? undefined,
+        statusUpdates: (g.logs ?? []).map((log: any) => ({
+          timestamp: new Date(log.updatedAt).toLocaleString(),
+          userId: log.user?.name ?? "Unknown",
+          fromStatus: log.originalStatus ?? "None",
+          toStatus: log.newStatus,
+        })),
+      }));
+
+      setGrants(mapped);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load history.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleExportPDF = async () => {
+    // Dynamic import to avoid SSR issues
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
     ]);
-    
-    // Add table
+
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("Application History Report", 14, 20);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `Generated on: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+      14,
+      28,
+    );
+
     autoTable(doc, {
-      head: [['Grant Name', 'Agency', 'Deadline', 'Funding', 'Status', 'Company']],
-      body: tableData,
+      head: [["Grant Name", "Agency", "Deadline", "Funding", "Status"]],
+      body: grants.map((g) => [
+        g.grant,
+        g.agency,
+        g.deadline,
+        g.fund,
+        g.status.replace(/_/g, " "),
+      ]),
       startY: 35,
-      theme: 'grid',
+      theme: "grid",
       headStyles: {
-        fillColor: [184, 154, 73], // Gold color matching your theme
+        fillColor: [184, 154, 73],
         textColor: [255, 255, 255],
         fontSize: 10,
-        fontStyle: 'bold',
-        halign: 'center'
+        fontStyle: "bold",
       },
-      bodyStyles: {
-        fontSize: 9,
-        cellPadding: 4
-      },
-      columnStyles: {
-        0: { cellWidth: 35 }, // Grant Name
-        1: { cellWidth: 30 }, // Agency
-        2: { cellWidth: 25 }, // Deadline
-        3: { cellWidth: 25 }, // Funding
-        4: { cellWidth: 25, halign: 'center' }, // Status
-        5: { cellWidth: 45 } // Company
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245]
-      },
-      margin: { top: 35 }
+      bodyStyles: { fontSize: 9, cellPadding: 4 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
     });
-    
-    // Add summary section at the bottom
-    const finalY = (doc as any).lastAutoTable.finalY || 35;
+
+    const finalY = (doc as any).lastAutoTable.finalY ?? 35;
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Summary', 14, finalY + 15);
-    
+    doc.setFont("helvetica", "bold");
+    doc.text("Summary", 14, finalY + 15);
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const totalApplications = grants.length;
-    const acceptedCount = grants.filter(g => g.status === 'Accepted').length;
-    const rejectedCount = grants.filter(g => g.status === 'Rejected').length;
-    const pendingCount = grants.filter(g => g.status === 'Applied').length;
-    
-    doc.text(`Total Applications: ${totalApplications}`, 14, finalY + 23);
-    doc.text(`Accepted: ${acceptedCount}`, 14, finalY + 30);
-    doc.text(`Rejected: ${rejectedCount}`, 14, finalY + 37);
-    doc.text(`Pending: ${pendingCount}`, 14, finalY + 44);
-    
-    // Save the PDF
-    doc.save(`Application_History_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Total: ${grants.length}`, 14, finalY + 23);
+    doc.text(
+      `Accepted: ${grants.filter((g) => g.status === "APPROVED").length}`,
+      14,
+      finalY + 30,
+    );
+    doc.text(
+      `Rejected: ${grants.filter((g) => g.status === "DECLINED").length}`,
+      14,
+      finalY + 37,
+    );
+    doc.text(
+      `Pending: ${grants.filter((g) => g.status === "APPLIED").length}`,
+      14,
+      finalY + 44,
+    );
+
+    doc.save(
+      `Application_History_${new Date().toISOString().split("T")[0]}.pdf`,
+    );
   };
+
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                border: "2px solid #B89A49",
+                borderTopColor: "transparent",
+                borderRadius: "50%",
+                margin: "0 auto 12px",
+                animation: "spin 0.8s linear infinite",
+              }}
+            />
+            <p className="text-sm text-gray-500">Loading history...</p>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Navbar />
+        <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-sm font-semibold text-red-600 mb-2">
+              Failed to load history
+            </p>
+            <p className="text-xs text-gray-500 mb-4">{error}</p>
+            <button
+              onClick={load}
+              className="px-4 py-2 text-sm bg-[#B89A49] text-white rounded hover:bg-[#a08640]"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -198,19 +202,19 @@ export default function HistoryPage() {
             <h1 className="text-3xl font-bold">Application History</h1>
             <button
               onClick={handleExportPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-[#B89A49] hover:bg-[#A08940] text-white font-medium rounded-lg transition-colors duration-200 shadow-sm hover:shadow-md"
+              className="flex items-center gap-2 px-4 py-2 bg-[#B89A49] hover:bg-[#A08940] text-white font-medium rounded-lg transition-colors"
             >
-              <svg 
-                className="w-5 h-5" 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
               Export PDF
