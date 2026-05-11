@@ -1,7 +1,17 @@
 // npm run scrape in terminal to launch scraping script.
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import grantScraper from './library/grantScraper.js';
 import { PrismaClient, Prisma } from "@prisma/client";
+
 const prisma = new PrismaClient();
+const require = createRequire(import.meta.url);
+const dbHandler = require('./library/db_handler.cjs');
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const OUTPUT_DIR = path.join(__dirname, 'library', 'output');
 
 const KEYWORDS = [ // Keywords that scraping will filter results by
   "leadership training",
@@ -82,6 +92,21 @@ async function run() {
     console.log(`Found ${res.length} opportunities from ${src}.`);
     grants.push(...res);
   }
+  console.log(`Collected ${grants.length} total opportunities.`);
+
+  // Write all grants to a single JSON file
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const latestPath = path.join(OUTPUT_DIR, 'all_grants_latest.json');
+  const timestampedPath = path.join(OUTPUT_DIR, `all_grants_${timestamp}.json`);
+  fs.writeFileSync(latestPath, JSON.stringify(grants, null, 2));
+  fs.writeFileSync(timestampedPath, JSON.stringify(grants, null, 2));
+  console.log(`Saved to ${latestPath}`);
+
+  // Insert via db_handler (SQLite)
+  const dbResult = dbHandler.saveGrants(grants.map(g => ({ ...g, source: 'grantScraper' })));
+  console.log(`DB handler — Inserted: ${dbResult.inserted} | Updated: ${dbResult.updated} | Skipped: ${dbResult.skipped} | Errors: ${dbResult.errors}`);
+
   console.log(`Inserting ${grants.length} total opportunities into database...`);
 
   // Iteratively create grants in database
