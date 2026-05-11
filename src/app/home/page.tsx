@@ -1,13 +1,9 @@
-import { PrismaClient } from '@prisma/client';
-import React from 'react';
+import { PrismaClient } from "@prisma/client";
+import React from "react";
 import Navbar from "../components/Navbar";
-import GrantsTable from "./components/GrantsTable";
-import { protect } from '@/library/auth';
+import GrantsView from "./components/GrantsView";
+import { protect } from "@/library/auth";
 
-
-import { SearchBar} from "./SearchBar";
-
-// Define interfaces for type safety
 interface GrantApplication {
   grantId: number;
   accountId: number;
@@ -37,7 +33,10 @@ interface FormattedGrant {
 const prisma = new PrismaClient();
 
 const Tag = ({ color, label }: { color: string; label: string }) => (
-  <span className={`px-2 py-1 text-xs rounded-md text-white`} style={{ backgroundColor: color }}>
+  <span
+    className={`px-2 py-1 text-xs rounded-md text-white`}
+    style={{ backgroundColor: color }}
+  >
     {label}
   </span>
 );
@@ -45,19 +44,17 @@ const Tag = ({ color, label }: { color: string; label: string }) => (
 export default async function Homepage() {
   await protect();
 
-  const grants = await prisma.grant.findMany({
-    include: {
-      applications: true,
-    },
-  }) as Grant[];
+  const grants = (await prisma.grant.findMany({
+    include: { applications: true },
+  })) as Grant[];
 
   const formatted: FormattedGrant[] = grants.map((grant: Grant) => {
-    const status = grant.applications[0]?.status || 'Not Applied';
+    const status = grant.applications[0]?.status || "Not Applied";
     return {
       title: grant.title,
-      amount: '$ TBD',
-      openDate: grant.openingDate?.toISOString().split('T')[0] ?? 'N/A',
-      dueDate: grant.closingDate?.toISOString().split('T')[0] ?? 'N/A',
+      amount: "$ TBD",
+      openDate: grant.openingDate?.toISOString().split("T")[0] ?? "N/A",
+      dueDate: grant.closingDate?.toISOString().split("T")[0] ?? "N/A",
       status: ["gray", status],
     };
   });
@@ -68,8 +65,7 @@ export default async function Homepage() {
       <div className="p-6 bg-gray-100 min-h-screen">
         <section className="mt-8">
           <h1 className="text-3xl font-bold mb-4">Grant Tracker</h1>
-          <SearchBar />
-          <GrantsTable />
+          <GrantsView />
         </section>
       </div>
     </>
