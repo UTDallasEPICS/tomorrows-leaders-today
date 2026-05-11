@@ -4,9 +4,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import grantScraper from './library/grantScraper.js';
-import { PrismaClient, Prisma } from "@prisma/client";
 
-const prisma = new PrismaClient();
+import { prisma } from "@/library/db";
+
 const require = createRequire(import.meta.url);
 const dbHandler = require('./library/db_handler.cjs');
 

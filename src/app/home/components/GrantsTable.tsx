@@ -39,8 +39,6 @@ type GrantsTableProps = {
   excludedKeywords?: string[];
 };
 
-const PAGE_SIZE = 25;
-
 const STATUS_STYLES: Record<string, { background: string; color: string }> = {
   APPLIED: { background: "#1a3a1a", color: "#7ec87e" },
   APPROVED: { background: "#1a3a1a", color: "#7ec87e" },
@@ -58,7 +56,6 @@ function StatusBadge({ status }: { status: string }) {
     background: "#2a2a2a",
     color: "#aaaaaa",
   };
-  const label = status.replace(/_/g, " ");
   return (
     <span
       style={{
@@ -70,7 +67,7 @@ function StatusBadge({ status }: { status: string }) {
         display: "inline-block",
       }}
     >
-      {label}
+      {status.replace(/_/g, " ")}
     </span>
   );
 }
@@ -81,70 +78,78 @@ export default function GrantsTable({
   excludedKeywords = [],
 }: GrantsTableProps) {
   const [grants, setGrants] = useState<GrantRow[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [activeSort, setActiveSort] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showLogsFor, setShowLogsFor] = useState<number | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/grants");
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      const data: Record<string, unknown>[] = await res.json();
+  const PAGE_SIZE = 25;
 
-      const mapped: GrantRow[] = data.map((g) => ({
-        id: g.id as number,
-        title: (g.title as string) ?? "Untitled",
-        agency: (g.agency as string) ?? "N/A",
-        release: g.openingDate
-          ? new Date(g.openingDate as string).toLocaleDateString()
-          : "N/A",
-        deadline: g.closingDate
-          ? new Date(g.closingDate as string).toLocaleDateString()
-          : "N/A",
-        fund: (g.opportunityNumber as string) ?? "N/A",
-        status: (g.logs as GrantLog[])?.[0]?.newStatus ?? "NOT_APPLIED",
-        applicationLink: (g.applicationLink as string) ?? null,
-        logs: (g.logs as GrantLog[]) ?? [],
-      }));
+  const load = useCallback(
+    async (page: number) => {
+      setLoading(true);
+      setError(null);
+      setExpandedId(null);
 
-      setGrants(mapped);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load grants.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      try {
+        const params = new URLSearchParams();
+        params.set("page", String(page));
+        if (searchTerm) params.set("search", searchTerm);
+        includedKeywords.forEach((kw) => params.append("include", kw));
+        excludedKeywords.forEach((kw) => params.append("exclude", kw));
 
-  useEffect(() => {
-    load();
-  }, [load]);
+        const res = await fetch(`/api/grants?${params.toString()}`);
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
+        const data = await res.json();
+
+        const mapped: GrantRow[] = data.grants.map(
+          (g: Record<string, unknown>) => ({
+            id: g.id as number,
+            title: (g.title as string) ?? "Untitled",
+            agency: (g.agency as string) ?? "N/A",
+            release: g.openingDate
+              ? new Date(g.openingDate as string).toLocaleDateString()
+              : "N/A",
+            deadline: g.closingDate
+              ? new Date(g.closingDate as string).toLocaleDateString()
+              : "N/A",
+            fund: (g.opportunityNumber as string) ?? "N/A",
+            status: (g.logs as GrantLog[])?.[0]?.newStatus ?? "NOT_APPLIED",
+            applicationLink: (g.applicationLink as string) ?? null,
+            logs: (g.logs as GrantLog[]) ?? [],
+          }),
+        );
+
+        setGrants(mapped);
+        setTotalPages(data.totalPages);
+        setTotal(data.total);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load grants.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [searchTerm, includedKeywords, excludedKeywords],
+  );
+
+  // Reset to page 1 and reload when filters change
   useEffect(() => {
     setCurrentPage(1);
-    setExpandedId(null);
-  }, [
-    searchTerm,
-    activeSort,
-    sortDirection,
-    includedKeywords,
-    excludedKeywords,
-  ]);
+    load(1);
+  }, [searchTerm, includedKeywords, excludedKeywords]);
 
-  const categories: { key: SortField; label: string }[] = [
-    { key: "title", label: "Grant" },
-    { key: "agency", label: "Agency" },
-    { key: "release", label: "Release" },
-    { key: "deadline", label: "Deadline" },
-    { key: "fund", label: "Opportunity #" },
-    { key: "status", label: "Status" },
-  ];
+  // Reload when page changes
+  useEffect(() => {
+    load(currentPage);
+  }, [currentPage]);
 
+  // Client-side sort (within current page only)
   const handleSort = (key: SortField) => {
     if (activeSort === key) {
       setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
@@ -154,31 +159,7 @@ export default function GrantsTable({
     }
   };
 
-  // Filtering
-  let filtered = grants;
-  if (searchTerm) {
-    const term = searchTerm.toLowerCase();
-    filtered = filtered.filter(
-      (g) =>
-        g.title.toLowerCase().includes(term) ||
-        g.agency.toLowerCase().includes(term),
-    );
-  }
-  if (includedKeywords.length > 0) {
-    filtered = filtered.filter((g) => {
-      const text = `${g.title} ${g.agency}`.toLowerCase();
-      return includedKeywords.some((kw) => text.includes(kw.toLowerCase()));
-    });
-  }
-  if (excludedKeywords.length > 0) {
-    filtered = filtered.filter((g) => {
-      const text = `${g.title} ${g.agency}`.toLowerCase();
-      return !excludedKeywords.some((kw) => text.includes(kw.toLowerCase()));
-    });
-  }
-
-  // Sorting
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = [...grants].sort((a, b) => {
     if (!activeSort) return 0;
     if (activeSort === "release" || activeSort === "deadline") {
       const tA =
@@ -193,20 +174,20 @@ export default function GrantsTable({
     return sortDirection === "asc" ? cmp : -cmp;
   });
 
-  // Pagination
-  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
-  const paginated = sorted.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
-  );
-
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     setCurrentPage(page);
-    setExpandedId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ── Loading state ──────────────────────────────────────
+  const categories: { key: SortField; label: string }[] = [
+    { key: "title", label: "Grant" },
+    { key: "agency", label: "Agency" },
+    { key: "release", label: "Release" },
+    { key: "deadline", label: "Deadline" },
+    { key: "fund", label: "Opportunity #" },
+    { key: "status", label: "Status" },
+  ];
+
   if (loading) {
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
@@ -227,7 +208,6 @@ export default function GrantsTable({
     );
   }
 
-  // ── Error state ────────────────────────────────────────
   if (error) {
     return (
       <div className="bg-white border border-red-200 rounded-lg p-12 text-center">
@@ -236,7 +216,7 @@ export default function GrantsTable({
         </p>
         <p className="text-xs text-gray-500 mb-4">{error}</p>
         <button
-          onClick={load}
+          onClick={() => load(currentPage)}
           className="px-4 py-2 text-sm bg-[#B89A49] text-white rounded hover:bg-[#a08640] transition-colors"
         >
           Retry
@@ -248,8 +228,8 @@ export default function GrantsTable({
   return (
     <>
       <div className="bg-[#E8DCC8] rounded-lg shadow overflow-hidden">
-        {/* Header row */}
-        <div className="hidden md:grid grid grid-cols-6 bg-[#B89A49] text-white">
+        {/* Desktop header */}
+        <div className="hidden md:grid grid-cols-6 bg-[#B89A49] text-white">
           {categories.map(({ key, label }) => (
             <button
               key={key}
@@ -276,20 +256,18 @@ export default function GrantsTable({
 
         {/* Rows */}
         <div className="divide-y divide-gray-300">
-          {paginated.length === 0 ? (
+          {sorted.length === 0 ? (
             <div className="p-12 text-center text-gray-500 text-sm">
               No grants match the current filters.
             </div>
           ) : (
-            paginated.map((grant) => {
+            sorted.map((grant) => {
               const isExpanded = expandedId === grant.id;
               return (
                 <div key={grant.id}>
-                  {/* Desktop row — hidden on mobile */}
+                  {/* Desktop row */}
                   <div
-                    className={`hidden md:grid grid-cols-6 cursor-pointer transition-colors ${
-                      isExpanded ? "bg-[#E8DCC8]" : "bg-white hover:bg-gray-50"
-                    }`}
+                    className={`hidden md:grid grid-cols-6 cursor-pointer transition-colors ${isExpanded ? "bg-[#E8DCC8]" : "bg-white hover:bg-gray-50"}`}
                     onClick={() => setExpandedId(isExpanded ? null : grant.id)}
                     role="row"
                     aria-expanded={isExpanded}
@@ -308,11 +286,9 @@ export default function GrantsTable({
                     </div>
                   </div>
 
-                  {/* Mobile card — hidden on desktop */}
+                  {/* Mobile card */}
                   <div
-                    className={`md:hidden cursor-pointer transition-colors border-b border-gray-200 ${
-                      isExpanded ? "bg-[#E8DCC8]" : "bg-white"
-                    }`}
+                    className={`md:hidden cursor-pointer transition-colors border-b border-gray-200 ${isExpanded ? "bg-[#E8DCC8]" : "bg-white"}`}
                     onClick={() => setExpandedId(isExpanded ? null : grant.id)}
                   >
                     <div className="p-4 flex items-start justify-between gap-3">
@@ -335,7 +311,7 @@ export default function GrantsTable({
                     </div>
                   </div>
 
-                  {/* Expanded panel — same for both */}
+                  {/* Expanded panel */}
                   {isExpanded && (
                     <div className="bg-[#E8DCC8] px-4 md:px-6 py-4 flex items-center gap-3 border-t border-[#d4c5a0]">
                       <button
@@ -379,11 +355,10 @@ export default function GrantsTable({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-300">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-white border-t border-gray-300">
             <span className="text-sm text-gray-600">
               Showing {(currentPage - 1) * PAGE_SIZE + 1}–
-              {Math.min(currentPage * PAGE_SIZE, sorted.length)} of{" "}
-              {sorted.length} grants
+              {Math.min(currentPage * PAGE_SIZE, total)} of {total} grants
             </span>
             <Stack spacing={2}>
               <Pagination
@@ -473,7 +448,6 @@ export default function GrantsTable({
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-
                 {grant.logs.length === 0 ? (
                   <p style={{ color: "#888", fontSize: 14 }}>
                     No status updates yet.
