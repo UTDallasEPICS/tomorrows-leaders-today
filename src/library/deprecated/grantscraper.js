@@ -3,6 +3,14 @@
 
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+const _require   = createRequire(import.meta.url);
 
 // Shared helpers
 const _delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -767,13 +775,46 @@ scraper["tealprod.tea.state.tx.us"] = async () => {
   return await scrapeAllGrants();
 }
 
-// Named exports — used by runScrape.ts
-export const grantsGovScraper     = (keywords) => scraper["grants.gov"](keywords);
-export const theGrantPortalScraper = (keywords) => scraper["thegrantportal.com"](keywords);
-export const txSmartBuyScraper    = ()          => scraper["txsmartbuy.gov"]();
-export const tgrcScraper          = ()          => scraper["tgrc.hogg.utexas.edu"]();
-export const teaScraper           = ()          => scraper["tealprod.tea.state.tx.us"]();
-export const grantwatchScraper    = (keywords) => scraper["grantwatch.com"](keywords);
-export const mottScraper          = (keywords) => scraper["mott.org"](keywords);
-
 export default scraper;
+
+// ─── RUN DIRECTLY ───────────────────────────────────────────
+// node src/library/grantScraper.js
+
+if (process.argv[1] === __filename) {
+  const { default: dbHandler } = await import('../db_handler.ts');
+  const OUTPUT_DIR = path.join(__dirname, 'output');
+
+  async function main() {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+
+    const allGrants = [];
+
+    for (const [source, fn] of Object.entries(scraper)) {
+      console.log(`\nScraping ${source}...`);
+      try {
+        const results = await fn();
+        console.log(`  ${results.length} grants from ${source}`);
+        allGrants.push(...results.map(g => ({ ...g, source })));
+      } catch (err) {
+        console.error(`  Error scraping ${source}: ${err.message}`);
+      }
+    }
+
+    console.log(`\nTotal: ${allGrants.length} grants`);
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const latestPath      = path.join(OUTPUT_DIR, 'all_grants_latest.json');
+    const timestampedPath = path.join(OUTPUT_DIR, `all_grants_${timestamp}.json`);
+    fs.writeFileSync(latestPath,      JSON.stringify(allGrants, null, 2));
+    fs.writeFileSync(timestampedPath, JSON.stringify(allGrants, null, 2));
+    console.log(`Saved: ${latestPath}`);
+
+    const result = dbHandler.saveGrants(allGrants.map(g => ({ ...g, source: 'grantScraper' })));
+    console.log(`DB — Inserted: ${result.inserted} | Updated: ${result.updated} | Skipped: ${result.skipped} | Errors: ${result.errors}`);
+  }
+
+  main().catch(err => {
+    console.error('Fatal:', err.message);
+    process.exit(1);
+  });
+}

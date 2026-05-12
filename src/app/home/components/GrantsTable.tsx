@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ChevronDown, ChevronUp, X, ExternalLink, History } from "lucide-react";
 import Pagination from "@mui/material/Pagination";
 import Stack from "@mui/material/Stack";
+import type { DateRange } from "./DateRangePicker";
 
 type GrantLog = {
   id: number;
@@ -35,6 +36,7 @@ type GrantRow = {
   deadline: string;
   fund: string;
   status: string;
+  source: string | null;
   applicationLink: string | null;
   logs: GrantLog[];
   description: string | null;
@@ -59,6 +61,9 @@ type GrantsTableProps = {
   searchTerm?: string;
   includedKeywords?: string[];
   excludedKeywords?: string[];
+  requiredFields?: string[];
+  openingRange?: DateRange;
+  closingRange?: DateRange;
 };
 
 const STATUS_STYLES: Record<string, { background: string; color: string }> = {
@@ -98,6 +103,9 @@ export default function GrantsTable({
   searchTerm = "",
   includedKeywords = [],
   excludedKeywords = [],
+  requiredFields = [],
+  openingRange = { from: null, to: null },
+  closingRange = { from: null, to: null },
 }: GrantsTableProps) {
   const [grants, setGrants] = useState<GrantRow[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -112,8 +120,42 @@ export default function GrantsTable({
 
   const PAGE_SIZE = 25;
 
-  const load = useCallback(
-    async (page: number) => {
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Serialize dates to stable primitives so useEffect deps don't change on every render
+  const openFromISO = openingRange.from?.toISOString() ?? "";
+  const openToISO = openingRange.to?.toISOString() ?? "";
+  const closeFromISO = closingRange.from?.toISOString() ?? "";
+  const closeToISO = closingRange.to?.toISOString() ?? "";
+
+  // Stable string key for keyword arrays
+  const includedKey = includedKeywords.join(",");
+  const excludedKey = excludedKeywords.join(",");
+  const requiredKey = requiredFields.join(",");
+
+  // Reset to page 1 whenever filters change (but not on page change itself)
+  const filterKey = [
+    searchTerm,
+    includedKey,
+    excludedKey,
+    requiredKey,
+    openFromISO,
+    openToISO,
+    closeFromISO,
+    closeToISO,
+    retryCount,
+  ].join("|");
+  const prevFilterKey = useRef(filterKey);
+
+  useEffect(() => {
+    const isFilterChange = filterKey !== prevFilterKey.current;
+    prevFilterKey.current = filterKey;
+    const page = isFilterChange ? 1 : currentPage;
+    if (isFilterChange) setCurrentPage(1);
+
+    let cancelled = false;
+
+    async function fetchGrants() {
       setLoading(true);
       setError(null);
       setExpandedId(null);
@@ -124,11 +166,17 @@ export default function GrantsTable({
         if (searchTerm) params.set("search", searchTerm);
         includedKeywords.forEach((kw) => params.append("include", kw));
         excludedKeywords.forEach((kw) => params.append("exclude", kw));
+        requiredFields.forEach((f) => params.append("requireField", f));
+        if (openFromISO) params.set("openFrom", openFromISO);
+        if (openToISO) params.set("openTo", openToISO);
+        if (closeFromISO) params.set("closeFrom", closeFromISO);
+        if (closeToISO) params.set("closeTo", closeToISO);
 
         const res = await fetch(`/api/grants?${params.toString()}`);
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
-
         const data = await res.json();
+
+        if (cancelled) return;
 
         const mapped: GrantRow[] = data.grants.map(
           (g: Record<string, unknown>) => ({
@@ -143,6 +191,7 @@ export default function GrantsTable({
               : "N/A",
             fund: (g.opportunityNumber as string) ?? "N/A",
             status: (g.logs as GrantLog[])?.[0]?.newStatus ?? "NOT_APPLIED",
+            source: (g.source as string) ?? null,
             applicationLink: (g.applicationLink as string) ?? null,
             logs: (g.logs as GrantLog[]) ?? [],
             description: (g.description as string) ?? null,
@@ -161,30 +210,26 @@ export default function GrantsTable({
         setTotalPages(data.totalPages);
         setTotal(data.total);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load grants.");
+        if (!cancelled)
+          setError(
+            err instanceof Error ? err.message : "Failed to load grants.",
+          );
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    },
-    [searchTerm, includedKeywords, excludedKeywords],
-  );
+    }
 
-  // Reset to page 1 and reload when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-    load(1);
-  }, [searchTerm, includedKeywords, excludedKeywords]);
+    fetchGrants();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey, currentPage]);
 
-  // Reload when page changes
-  useEffect(() => {
-    load(currentPage);
-  }, [currentPage]);
-
-  // Client-side sort (within current page only)
   const handleSort = (key: SortField) => {
-    if (activeSort === key) {
+    if (activeSort === key)
       setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
+    else {
       setActiveSort(key);
       setSortDirection("asc");
     }
@@ -210,7 +255,7 @@ export default function GrantsTable({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const categories: { key: SortField; label: string }[] = [
+  const columns: { key: SortField; label: string }[] = [
     { key: "title", label: "Grant" },
     { key: "agency", label: "Agency" },
     { key: "release", label: "Release" },
@@ -247,7 +292,7 @@ export default function GrantsTable({
         </p>
         <p className="text-xs text-gray-500 mb-4">{error}</p>
         <button
-          onClick={() => load(currentPage)}
+          onClick={() => setRetryCount((c) => c + 1)}
           className="px-4 py-2 text-sm bg-[#B89A49] text-white rounded hover:bg-[#a08640] transition-colors"
         >
           Retry
@@ -261,7 +306,7 @@ export default function GrantsTable({
       <div className="bg-[#E8DCC8] rounded-lg shadow overflow-hidden">
         {/* Desktop header */}
         <div className="hidden md:grid grid-cols-6 bg-[#B89A49] text-white">
-          {categories.map(({ key, label }) => (
+          {columns.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => handleSort(key)}
@@ -294,6 +339,8 @@ export default function GrantsTable({
           ) : (
             sorted.map((grant) => {
               const isExpanded = expandedId === grant.id;
+              const sourceLabel = grant.source ?? null;
+
               return (
                 <div key={grant.id}>
                   {/* Desktop row */}
@@ -303,7 +350,10 @@ export default function GrantsTable({
                     role="row"
                     aria-expanded={isExpanded}
                   >
-                    <div className="p-3 text-sm truncate" title={grant.title}>
+                    <div
+                      className={`p-3 text-sm ${isExpanded ? "whitespace-normal break-words" : "truncate"}`}
+                      title={grant.title}
+                    >
                       {grant.title}
                     </div>
                     <div className="p-3 text-sm truncate" title={grant.agency}>
@@ -324,7 +374,9 @@ export default function GrantsTable({
                   >
                     <div className="p-4 flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">
+                        <p
+                          className={`text-sm font-semibold text-gray-900 ${isExpanded ? "whitespace-normal" : "truncate"}`}
+                        >
                           {grant.title}
                         </p>
                         <p className="text-xs text-gray-500 mt-0.5 truncate">
@@ -346,14 +398,18 @@ export default function GrantsTable({
                   {isExpanded && (
                     <div className="bg-[#f5ede0] border-t border-[#d4c5a0]">
                       <div className="px-4 md:px-6 py-5 flex flex-col gap-5">
-                        {/* Description */}
+                        {/* Full title */}
+                        <p className="text-base font-semibold text-gray-900 leading-snug">
+                          {grant.title}
+                        </p>
+
                         {grant.description && (
                           <p className="text-sm text-gray-600 leading-relaxed border-l-2 border-[#B89A49] pl-3">
                             {grant.description}
                           </p>
                         )}
 
-                        {/* Key details row */}
+                        {/* Key details */}
                         <div className="flex flex-wrap gap-x-8 gap-y-3">
                           {[
                             { label: "Opportunity #", value: grant.fund },
@@ -361,6 +417,8 @@ export default function GrantsTable({
                             { label: "Category", value: grant.category },
                             { label: "Opens", value: grant.release },
                             { label: "Closes", value: grant.deadline },
+                            // Source shown here
+                            { label: "Source", value: sourceLabel },
                           ]
                             .filter(({ value }) => value && value !== "N/A")
                             .map(({ label, value }) => (
@@ -375,7 +433,7 @@ export default function GrantsTable({
                             ))}
                         </div>
 
-                        {/* Funding row — only show if at least one value exists */}
+                        {/* Funding */}
                         {(grant.awardFloor != null ||
                           grant.awardCeiling != null ||
                           grant.totalFundingAmount != null) && (
@@ -481,7 +539,7 @@ export default function GrantsTable({
                           </div>
                         )}
 
-                        {/* Status + actions */}
+                        {/* Actions */}
                         <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-[#d4c5a0]">
                           <StatusBadge status={grant.status} />
                           <button

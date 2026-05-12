@@ -42,6 +42,7 @@ model Grant {
   awardFloor         Float?
   awardCeiling       Float?
   totalFundingAmount Float?
+  source             String?
 
   contacts           GrantContact[]
   assistanceListings AssistanceListing[]
