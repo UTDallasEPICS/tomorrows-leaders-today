@@ -16,6 +16,16 @@ const ALLOWED_FIELDS = new Set([
   "totalFundingAmount",
 ]);
 
+const ALLOWED_SORT_FIELDS = new Set([
+  "title",
+  "agency",
+  "openingDate",
+  "closingDate",
+  "opportunityNumber",
+  "awardCeiling",
+  "totalFundingAmount",
+]);
+
 function parseDate(value: string | null): Date | null {
   if (!value) return null;
   const d = new Date(value);
@@ -35,12 +45,19 @@ export async function GET(req: NextRequest) {
       .getAll("requireField")
       .filter((f) => ALLOWED_FIELDS.has(f));
 
+    // Sort params — validate against whitelist, default to closingDate asc
+    const rawSortField = searchParams.get("sortField") ?? "closingDate";
+    const rawSortDir   = searchParams.get("sortDir")   ?? "asc";
+    const sortField = ALLOWED_SORT_FIELDS.has(rawSortField) ? rawSortField : "closingDate";
+    const sortDir   = rawSortDir === "desc" ? "desc" : "asc";
+
+    // Nulls last for dates — grants with no date go to the bottom regardless of direction
+    const nullsSort = sortDir === "asc" ? "last" : "last";
+
     const openFrom  = parseDate(searchParams.get("openFrom"));
     const openTo    = parseDate(searchParams.get("openTo"));
     const closeFrom = parseDate(searchParams.get("closeFrom"));
     const closeTo   = parseDate(searchParams.get("closeTo"));
-
-    // ── Keyword filters ────────────────────────────────────────────────────────
 
     const searchFilter = search
       ? { OR: [{ title: { contains: search } }, { agency: { contains: search } }] }
@@ -56,7 +73,6 @@ export async function GET(req: NextRequest) {
         ? { NOT: { OR: excluded.map((kw) => ({ OR: [{ title: { contains: kw } }, { agency: { contains: kw } }] })) } }
         : undefined;
 
-
     const requiredFieldFilters = requiredFields.map((field) => ({
       [field]: { not: null },
     }));
@@ -64,12 +80,7 @@ export async function GET(req: NextRequest) {
     const dateFilters: object[] = [];
 
     if (openFrom || openTo) {
-      // Swap if inverted
-      const [lo, hi] =
-        openFrom && openTo && openFrom > openTo
-          ? [openTo, openFrom]
-          : [openFrom, openTo];
-
+      const [lo, hi] = openFrom && openTo && openFrom > openTo ? [openTo, openFrom] : [openFrom, openTo];
       const condition: Record<string, unknown> = { not: null };
       if (lo) condition.gte = lo;
       if (hi) condition.lte = hi;
@@ -77,11 +88,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (closeFrom || closeTo) {
-      const [lo, hi] =
-        closeFrom && closeTo && closeFrom > closeTo
-          ? [closeTo, closeFrom]
-          : [closeFrom, closeTo];
-
+      const [lo, hi] = closeFrom && closeTo && closeFrom > closeTo ? [closeTo, closeFrom] : [closeFrom, closeTo];
       const condition: Record<string, unknown> = { not: null };
       if (lo) condition.gte = lo;
       if (hi) condition.lte = hi;
@@ -98,6 +105,18 @@ export async function GET(req: NextRequest) {
       ],
     };
 
+    const isNullableField = ["openingDate", "closingDate", "awardCeiling", "totalFundingAmount"].includes(sortField);
+
+    const orderBy = isNullableField
+      ? [
+          { [sortField]: { sort: sortDir, nulls: "last" as const } },
+          { id: "asc" as const }, // stable tiebreaker
+        ]
+      : [
+          { [sortField]: sortDir },
+          { id: "asc" as const },
+        ];
+
     const [total, grants] = await Promise.all([
       prisma.grant.count({ where }),
       prisma.grant.findMany({
@@ -107,7 +126,7 @@ export async function GET(req: NextRequest) {
           contacts:           true,
           assistanceListings: true,
         },
-        orderBy: { id: "asc" },
+        orderBy,
         skip: (page - 1) * PAGE_SIZE,
         take: PAGE_SIZE,
       }),

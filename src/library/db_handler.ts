@@ -466,38 +466,45 @@ export async function db_handler(
 //
 // 1. closingDate passed 30+ days ago → definitely expired
 // 2. No closingDate and not seen in 60+ days → probably gone
-// 3. Never delete if openingDate is in the future
-
+// 3. No closingDate and openingDate was 2+ years ago → clearly stale
+// 4. Never delete if openingDate is in the future
+ 
 export async function deleteStaleGrants(dryRun = false): Promise<number> {
   const now = new Date();
-
+ 
   const closedCutoff = new Date();
-  closedCutoff.setDate(closedCutoff.getDate() - 60);
-
+  closedCutoff.setDate(closedCutoff.getDate() - 30);
+ 
   const unseenCutoff = new Date();
   unseenCutoff.setDate(unseenCutoff.getDate() - 60);
-
+ 
+  const twoYearCutoff = new Date();
+  twoYearCutoff.setFullYear(twoYearCutoff.getFullYear() - 2);
+ 
   const where = {
     OR: [
-      { openingDate: null },
-      { openingDate: { lte: now } },
-    ],
-    AND: [
+      // Rule 1: closing date passed 30+ days ago (only for grants already opened)
       {
+        closingDate: { lt: closedCutoff },
+        NOT: { openingDate: { gt: now } },
+      },
+      // Rule 2: no closing date, not seen in 60+ days
+      {
+        closingDate: null,
+        NOT: { openingDate: { gt: now } },
         OR: [
-          { closingDate: { lt: closedCutoff } },
-          {
-            closingDate: null,
-            OR: [
-              { lastSeenAt: { lt: unseenCutoff } },
-              { lastSeenAt: null },
-            ],
-          },
+          { lastSeenAt: { lt: unseenCutoff } },
+          { lastSeenAt: null },
         ],
+      },
+      // Rule 3: no closing date, opened 2+ years ago — clearly abandoned
+      {
+        closingDate: null,
+        openingDate: { lt: twoYearCutoff },
       },
     ],
   };
-
+ 
   // Always preview what will be deleted first
   const targets = await prisma.grant.findMany({
     where,
@@ -505,26 +512,28 @@ export async function deleteStaleGrants(dryRun = false): Promise<number> {
       id:                true,
       opportunityNumber: true,
       title:             true,
+      openingDate:       true,
       closingDate:       true,
       lastSeenAt:        true,
       source:            true,
     },
   });
-
+ 
   if (targets.length === 0) {
     console.log("[cleanup] No stale grants found.");
     return 0;
   }
-
+ 
   console.log(`[cleanup] ${dryRun ? "DRY RUN — " : ""}${targets.length} grants targeted for deletion:`);
   for (const g of targets) {
     console.log(
       `  [${g.source ?? "unknown"}] ${g.opportunityNumber} — "${g.title}" ` +
-      `(closes: ${g.closingDate?.toLocaleDateString() ?? "none"}, ` +
+      `(opens: ${g.openingDate?.toLocaleDateString() ?? "none"}, ` +
+      `closes: ${g.closingDate?.toLocaleDateString() ?? "none"}, ` +
       `last seen: ${g.lastSeenAt?.toLocaleDateString() ?? "never"})`
     );
   }
-
+ 
   if (dryRun) {
     console.log("[cleanup] Dry run complete — nothing deleted.");
     return targets.length;
@@ -534,7 +543,7 @@ export async function deleteStaleGrants(dryRun = false): Promise<number> {
   const { count } = await prisma.$transaction(async (tx) => {
     return tx.grant.deleteMany({ where: { id: { in: ids } } });
   });
-
+ 
   console.log(`[cleanup] Deleted ${count} stale grants.`);
   return count;
 }

@@ -49,13 +49,14 @@ type GrantRow = {
   assistanceListings: AssistanceListing[];
 };
 
+// Sort fields map to actual DB column names
 type SortField =
   | "title"
   | "agency"
-  | "release"
-  | "deadline"
-  | "fund"
-  | "status";
+  | "openingDate"
+  | "closingDate"
+  | "opportunityNumber";
+type SortDir = "asc" | "desc";
 
 type GrantsTableProps = {
   searchTerm?: string;
@@ -113,27 +114,24 @@ export default function GrantsTable({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeSort, setActiveSort] = useState<SortField | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [retryCount, setRetryCount] = useState(0);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showLogsFor, setShowLogsFor] = useState<number | null>(null);
 
+  // Default: soonest deadline first
+  const [sortField, setSortField] = useState<SortField>("closingDate");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
   const PAGE_SIZE = 25;
 
-  const [retryCount, setRetryCount] = useState(0);
-
-  // Serialize dates to stable primitives so useEffect deps don't change on every render
   const openFromISO = openingRange.from?.toISOString() ?? "";
   const openToISO = openingRange.to?.toISOString() ?? "";
   const closeFromISO = closingRange.from?.toISOString() ?? "";
   const closeToISO = closingRange.to?.toISOString() ?? "";
-
-  // Stable string key for keyword arrays
   const includedKey = includedKeywords.join(",");
   const excludedKey = excludedKeywords.join(",");
   const requiredKey = requiredFields.join(",");
 
-  // Reset to page 1 whenever filters change (but not on page change itself)
   const filterKey = [
     searchTerm,
     includedKey,
@@ -143,8 +141,11 @@ export default function GrantsTable({
     openToISO,
     closeFromISO,
     closeToISO,
+    sortField,
+    sortDir,
     retryCount,
   ].join("|");
+
   const prevFilterKey = useRef(filterKey);
 
   useEffect(() => {
@@ -163,6 +164,8 @@ export default function GrantsTable({
       try {
         const params = new URLSearchParams();
         params.set("page", String(page));
+        params.set("sortField", sortField);
+        params.set("sortDir", sortDir);
         if (searchTerm) params.set("search", searchTerm);
         includedKeywords.forEach((kw) => params.append("include", kw));
         excludedKeywords.forEach((kw) => params.append("exclude", kw));
@@ -175,7 +178,6 @@ export default function GrantsTable({
         const res = await fetch(`/api/grants?${params.toString()}`);
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         const data = await res.json();
-
         if (cancelled) return;
 
         const mapped: GrantRow[] = data.grants.map(
@@ -226,29 +228,15 @@ export default function GrantsTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, currentPage]);
 
-  const handleSort = (key: SortField) => {
-    if (activeSort === key)
-      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setActiveSort(key);
-      setSortDirection("asc");
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("asc");
     }
-  };
-
-  const sorted = [...grants].sort((a, b) => {
-    if (!activeSort) return 0;
-    if (activeSort === "release" || activeSort === "deadline") {
-      const tA =
-        a[activeSort] === "N/A" ? 0 : new Date(a[activeSort]).getTime();
-      const tB =
-        b[activeSort] === "N/A" ? 0 : new Date(b[activeSort]).getTime();
-      return sortDirection === "asc" ? tA - tB : tB - tA;
-    }
-    const cmp = String(a[activeSort] ?? "").localeCompare(
-      String(b[activeSort] ?? ""),
-    );
-    return sortDirection === "asc" ? cmp : -cmp;
-  });
+    // filterKey change resets to page 1 automatically
+  }
 
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     setCurrentPage(page);
@@ -258,10 +246,9 @@ export default function GrantsTable({
   const columns: { key: SortField; label: string }[] = [
     { key: "title", label: "Grant" },
     { key: "agency", label: "Agency" },
-    { key: "release", label: "Release" },
-    { key: "deadline", label: "Deadline" },
-    { key: "fund", label: "Opportunity #" },
-    { key: "status", label: "Status" },
+    { key: "openingDate", label: "Release" },
+    { key: "closingDate", label: "Deadline" },
+    { key: "opportunityNumber", label: "Opportunity #" },
   ];
 
   if (loading) {
@@ -305,7 +292,10 @@ export default function GrantsTable({
     <>
       <div className="bg-[#E8DCC8] rounded-lg shadow overflow-hidden">
         {/* Desktop header */}
-        <div className="hidden md:grid grid-cols-6 bg-[#B89A49] text-white">
+        <div
+          className="hidden md:grid bg-[#B89A49] text-white"
+          style={{ gridTemplateColumns: "2fr 1.5fr 1fr 1fr 1.5fr" }}
+        >
           {columns.map(({ key, label }) => (
             <button
               key={key}
@@ -313,12 +303,12 @@ export default function GrantsTable({
               className="p-3 text-left flex items-center justify-between hover:bg-black/10 transition-colors"
             >
               <span
-                className={`text-sm ${activeSort === key ? "font-bold" : "font-medium"}`}
+                className={`text-sm ${sortField === key ? "font-bold" : "font-medium"}`}
               >
                 {label}
               </span>
-              {activeSort === key ? (
-                sortDirection === "asc" ? (
+              {sortField === key ? (
+                sortDir === "asc" ? (
                   <ChevronUp className="w-4 h-4 flex-shrink-0" />
                 ) : (
                   <ChevronDown className="w-4 h-4 flex-shrink-0" />
@@ -332,20 +322,19 @@ export default function GrantsTable({
 
         {/* Rows */}
         <div className="divide-y divide-gray-300">
-          {sorted.length === 0 ? (
+          {grants.length === 0 ? (
             <div className="p-12 text-center text-gray-500 text-sm">
               No grants match the current filters.
             </div>
           ) : (
-            sorted.map((grant) => {
+            grants.map((grant) => {
               const isExpanded = expandedId === grant.id;
-              const sourceLabel = grant.source ?? null;
-
               return (
                 <div key={grant.id}>
                   {/* Desktop row */}
                   <div
-                    className={`hidden md:grid grid-cols-6 cursor-pointer transition-colors ${isExpanded ? "bg-[#E8DCC8]" : "bg-white hover:bg-gray-50"}`}
+                    className={`hidden md:grid cursor-pointer transition-colors ${isExpanded ? "bg-[#E8DCC8]" : "bg-white hover:bg-gray-50"}`}
+                    style={{ gridTemplateColumns: "2fr 1.5fr 1fr 1fr 1.5fr" }}
                     onClick={() => setExpandedId(isExpanded ? null : grant.id)}
                     role="row"
                     aria-expanded={isExpanded}
@@ -362,9 +351,6 @@ export default function GrantsTable({
                     <div className="p-3 text-sm">{grant.release}</div>
                     <div className="p-3 text-sm">{grant.deadline}</div>
                     <div className="p-3 text-sm truncate">{grant.fund}</div>
-                    <div className="p-3 text-sm">
-                      <StatusBadge status={grant.status} />
-                    </div>
                   </div>
 
                   {/* Mobile card */}
@@ -398,7 +384,6 @@ export default function GrantsTable({
                   {isExpanded && (
                     <div className="bg-[#f5ede0] border-t border-[#d4c5a0]">
                       <div className="px-4 md:px-6 py-5 flex flex-col gap-5">
-                        {/* Full title */}
                         <p className="text-base font-semibold text-gray-900 leading-snug">
                           {grant.title}
                         </p>
@@ -409,7 +394,6 @@ export default function GrantsTable({
                           </p>
                         )}
 
-                        {/* Key details */}
                         <div className="flex flex-wrap gap-x-8 gap-y-3">
                           {[
                             { label: "Opportunity #", value: grant.fund },
@@ -417,8 +401,7 @@ export default function GrantsTable({
                             { label: "Category", value: grant.category },
                             { label: "Opens", value: grant.release },
                             { label: "Closes", value: grant.deadline },
-                            // Source shown here
-                            { label: "Source", value: sourceLabel },
+                            { label: "Source", value: grant.source },
                           ]
                             .filter(({ value }) => value && value !== "N/A")
                             .map(({ label, value }) => (
@@ -433,7 +416,6 @@ export default function GrantsTable({
                             ))}
                         </div>
 
-                        {/* Funding */}
                         {(grant.awardFloor != null ||
                           grant.awardCeiling != null ||
                           grant.totalFundingAmount != null) && (
@@ -468,7 +450,6 @@ export default function GrantsTable({
                           </div>
                         )}
 
-                        {/* Contacts */}
                         {grant.contacts.length > 0 && (
                           <div>
                             <p className="text-[10px] font-bold uppercase tracking-wider text-[#8a7a4a] mb-2">
@@ -504,7 +485,6 @@ export default function GrantsTable({
                           </div>
                         )}
 
-                        {/* Assistance listings */}
                         {grant.assistanceListings.length > 0 && (
                           <div>
                             <p className="text-[10px] font-bold uppercase tracking-wider text-[#8a7a4a] mb-2">
@@ -539,7 +519,6 @@ export default function GrantsTable({
                           </div>
                         )}
 
-                        {/* Actions */}
                         <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-[#d4c5a0]">
                           <StatusBadge status={grant.status} />
                           <button
