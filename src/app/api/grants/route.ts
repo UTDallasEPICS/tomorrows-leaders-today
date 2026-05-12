@@ -64,6 +64,8 @@ export async function GET(req: NextRequest) {
             include: { user: true },
             orderBy: { updatedAt: "desc" },
           },
+          contacts: true,
+          assistanceListings: true,
         },
         orderBy: { id: "asc" },
         skip: (page - 1) * PAGE_SIZE,

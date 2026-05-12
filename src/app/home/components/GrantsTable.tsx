@@ -13,6 +13,20 @@ type GrantLog = {
   user: { name: string };
 };
 
+type GrantContact = {
+  id: number;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
+type AssistanceListing = {
+  id: number;
+  code: string;
+  name: string;
+  link: string | null;
+};
+
 type GrantRow = {
   id: number;
   title: string;
@@ -23,6 +37,14 @@ type GrantRow = {
   status: string;
   applicationLink: string | null;
   logs: GrantLog[];
+  description: string | null;
+  applicationType: string | null;
+  category: string | null;
+  awardFloor: number | null;
+  awardCeiling: number | null;
+  totalFundingAmount: number | null;
+  contacts: GrantContact[];
+  assistanceListings: AssistanceListing[];
 };
 
 type SortField =
@@ -123,6 +145,15 @@ export default function GrantsTable({
             status: (g.logs as GrantLog[])?.[0]?.newStatus ?? "NOT_APPLIED",
             applicationLink: (g.applicationLink as string) ?? null,
             logs: (g.logs as GrantLog[]) ?? [],
+            description: (g.description as string) ?? null,
+            applicationType: (g.applicationType as string) ?? null,
+            category: (g.category as string) ?? null,
+            awardFloor: (g.awardFloor as number) ?? null,
+            awardCeiling: (g.awardCeiling as number) ?? null,
+            totalFundingAmount: (g.totalFundingAmount as number) ?? null,
+            contacts: (g.contacts as GrantContact[]) ?? [],
+            assistanceListings:
+              (g.assistanceListings as AssistanceListing[]) ?? [],
           }),
         );
 
@@ -313,38 +344,178 @@ export default function GrantsTable({
 
                   {/* Expanded panel */}
                   {isExpanded && (
-                    <div className="bg-[#E8DCC8] px-4 md:px-6 py-4 flex items-center gap-3 border-t border-[#d4c5a0]">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowLogsFor(grant.id);
-                        }}
-                        className="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
-                      >
-                        <History className="w-4 h-4" />
-                        <span className="hidden sm:inline">Status History</span>
-                        <span className="sm:hidden">History</span>
-                      </button>
-                      {grant.applicationLink ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(
-                              grant.applicationLink!,
-                              "_blank",
-                              "noopener,noreferrer",
-                            );
-                          }}
-                          className="flex items-center gap-2 px-3 py-2 text-sm bg-[#B89A49] text-white rounded hover:bg-[#a08640] transition-colors"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          Apply
-                        </button>
-                      ) : (
-                        <span className="text-sm text-gray-400 italic">
-                          No application link
-                        </span>
-                      )}
+                    <div className="bg-[#f5ede0] border-t border-[#d4c5a0]">
+                      <div className="px-4 md:px-6 py-5 flex flex-col gap-5">
+                        {/* Description */}
+                        {grant.description && (
+                          <p className="text-sm text-gray-600 leading-relaxed border-l-2 border-[#B89A49] pl-3">
+                            {grant.description}
+                          </p>
+                        )}
+
+                        {/* Key details row */}
+                        <div className="flex flex-wrap gap-x-8 gap-y-3">
+                          {[
+                            { label: "Opportunity #", value: grant.fund },
+                            { label: "Type", value: grant.applicationType },
+                            { label: "Category", value: grant.category },
+                            { label: "Opens", value: grant.release },
+                            { label: "Closes", value: grant.deadline },
+                          ]
+                            .filter(({ value }) => value && value !== "N/A")
+                            .map(({ label, value }) => (
+                              <div key={label}>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8a7a4a]">
+                                  {label}
+                                </p>
+                                <p className="text-sm text-gray-800 mt-0.5">
+                                  {value}
+                                </p>
+                              </div>
+                            ))}
+                        </div>
+
+                        {/* Funding row — only show if at least one value exists */}
+                        {(grant.awardFloor != null ||
+                          grant.awardCeiling != null ||
+                          grant.totalFundingAmount != null) && (
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-[#8a7a4a] mb-2">
+                              Funding
+                            </p>
+                            <div className="flex flex-wrap gap-3">
+                              {[
+                                { label: "Floor", value: grant.awardFloor },
+                                { label: "Ceiling", value: grant.awardCeiling },
+                                {
+                                  label: "Total",
+                                  value: grant.totalFundingAmount,
+                                },
+                              ]
+                                .filter(({ value }) => value != null)
+                                .map(({ label, value }) => (
+                                  <div
+                                    key={label}
+                                    className="flex items-center gap-2 bg-white border border-[#e0d5c0] px-3 py-2"
+                                  >
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#8a7a4a]">
+                                      {label}
+                                    </span>
+                                    <span className="text-sm font-bold text-[#B89A49]">
+                                      ${value!.toLocaleString()}
+                                    </span>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Contacts */}
+                        {grant.contacts.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-[#8a7a4a] mb-2">
+                              Contacts
+                            </p>
+                            <div className="flex flex-wrap gap-3">
+                              {grant.contacts.map((c) => (
+                                <div
+                                  key={c.id}
+                                  className="bg-white border border-[#e0d5c0] px-3 py-2 text-sm"
+                                >
+                                  {c.name && (
+                                    <p className="font-semibold text-gray-800">
+                                      {c.name}
+                                    </p>
+                                  )}
+                                  {c.email && (
+                                    <a
+                                      href={`mailto:${c.email}`}
+                                      className="text-[#B89A49] hover:underline text-xs block"
+                                    >
+                                      {c.email}
+                                    </a>
+                                  )}
+                                  {c.phone && (
+                                    <p className="text-gray-500 text-xs">
+                                      {c.phone}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Assistance listings */}
+                        {grant.assistanceListings.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-[#8a7a4a] mb-2">
+                              Assistance Listings
+                            </p>
+                            <div className="flex flex-col gap-1.5">
+                              {grant.assistanceListings.map((al) => (
+                                <div
+                                  key={al.id}
+                                  className="flex items-center gap-2 text-sm"
+                                >
+                                  <span className="text-[10px] font-bold bg-[#B89A49] text-white px-2 py-0.5 flex-shrink-0">
+                                    {al.code}
+                                  </span>
+                                  {al.link ? (
+                                    <a
+                                      href={al.link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[#B89A49] hover:underline"
+                                    >
+                                      {al.name}
+                                    </a>
+                                  ) : (
+                                    <span className="text-gray-700">
+                                      {al.name}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Status + actions */}
+                        <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-[#d4c5a0]">
+                          <StatusBadge status={grant.status} />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowLogsFor(grant.id);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+                          >
+                            <History className="w-3.5 h-3.5" />
+                            Status History
+                          </button>
+                          {grant.applicationLink ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(
+                                  grant.applicationLink!,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                );
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#B89A49] text-white rounded hover:bg-[#a08640] transition-colors"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Apply
+                            </button>
+                          ) : (
+                            <span className="text-sm text-gray-400 italic">
+                              No application link
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -353,7 +524,6 @@ export default function GrantsTable({
           )}
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-white border-t border-gray-300">
             <span className="text-sm text-gray-600">
