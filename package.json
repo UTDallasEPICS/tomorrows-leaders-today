@@ -10,6 +10,8 @@
     "lint": "next lint",
     "generate": "prisma generate",
     "scrape": "tsx src/runScrape.ts",
+    "cleanup": "tsx src/cleanup.ts",
+    "cleanup:preview": "tsx src/cleanup.ts --dry-run",
     "seed": "node scripts/seedGrant.js",
     "postinstall": "prisma generate"
   },
