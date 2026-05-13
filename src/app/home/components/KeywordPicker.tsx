@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, Plus } from "lucide-react";
+
+// ─── Preset keywords ──────────────────────────────────────────────────────────
 
 const KEYWORDS = [
   "Youth",
@@ -31,8 +33,26 @@ const KEYWORDS = [
   "Poverty",
 ];
 
-type KeywordPickerProps = {
-  onFilterChange: (included: string[], excluded: string[]) => void;
+export const FILTERABLE_FIELDS: { value: string; label: string }[] = [
+  { value: "applicationLink", label: "Application Link" },
+  { value: "closingDate", label: "Deadline" },
+  { value: "openingDate", label: "Release Date" },
+  { value: "agency", label: "Agency" },
+  { value: "description", label: "Description" },
+  { value: "category", label: "Category" },
+  { value: "applicationType", label: "Application Type" },
+  { value: "awardFloor", label: "Award Floor" },
+  { value: "awardCeiling", label: "Award Ceiling" },
+  { value: "totalFundingAmount", label: "Total Funding" },
+  { value: "source", label: "Source" },
+];
+
+export type KeywordPickerProps = {
+  onFilterChange: (
+    included: string[],
+    excluded: string[],
+    requiredFields: string[],
+  ) => void;
 };
 
 export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
@@ -41,6 +61,14 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
   const [included, setIncluded] = useState<string[]>([]);
   const [excluded, setExcluded] = useState<string[]>([]);
 
+  const [requiredFields, setRequiredFields] = useState<string[]>([]);
+  const [selectedField, setSelectedField] = useState(
+    FILTERABLE_FIELDS[0].value,
+  );
+
+  const emit = (inc: string[], exc: string[], rf: string[]) =>
+    onFilterChange(inc, exc, rf);
+
   const addToInclude = useCallback(
     (keyword: string) => {
       if (included.includes(keyword)) return;
@@ -48,9 +76,9 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
       const newIncluded = [...included, keyword];
       setIncluded(newIncluded);
       setExcluded(newExcluded);
-      onFilterChange(newIncluded, newExcluded);
+      emit(newIncluded, newExcluded, requiredFields);
     },
-    [included, excluded, onFilterChange],
+    [included, excluded, requiredFields],
   );
 
   const addToExclude = useCallback(
@@ -60,27 +88,43 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
       const newExcluded = [...excluded, keyword];
       setIncluded(newIncluded);
       setExcluded(newExcluded);
-      onFilterChange(newIncluded, newExcluded);
+      emit(newIncluded, newExcluded, requiredFields);
     },
-    [included, excluded, onFilterChange],
+    [included, excluded, requiredFields],
   );
 
   const removeFromInclude = useCallback(
     (keyword: string) => {
-      const newIncluded = included.filter((k) => k !== keyword);
-      setIncluded(newIncluded);
-      onFilterChange(newIncluded, excluded);
+      const next = included.filter((k) => k !== keyword);
+      setIncluded(next);
+      emit(next, excluded, requiredFields);
     },
-    [included, excluded, onFilterChange],
+    [included, excluded, requiredFields],
   );
 
   const removeFromExclude = useCallback(
     (keyword: string) => {
-      const newExcluded = excluded.filter((k) => k !== keyword);
-      setExcluded(newExcluded);
-      onFilterChange(included, newExcluded);
+      const next = excluded.filter((k) => k !== keyword);
+      setExcluded(next);
+      emit(included, next, requiredFields);
     },
-    [included, excluded, onFilterChange],
+    [included, excluded, requiredFields],
+  );
+
+  const addRequiredField = useCallback(() => {
+    if (requiredFields.includes(selectedField)) return;
+    const next = [...requiredFields, selectedField];
+    setRequiredFields(next);
+    emit(included, excluded, next);
+  }, [requiredFields, selectedField, included, excluded]);
+
+  const removeRequiredField = useCallback(
+    (field: string) => {
+      const next = requiredFields.filter((f) => f !== field);
+      setRequiredFields(next);
+      emit(included, excluded, next);
+    },
+    [requiredFields, included, excluded],
   );
 
   const clearAll = useCallback(() => {
@@ -88,8 +132,9 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
     setExcluded([]);
     setIncludeSearch("");
     setExcludeSearch("");
-    onFilterChange([], []);
-  }, [onFilterChange]);
+    setRequiredFields([]);
+    emit([], [], []);
+  }, []);
 
   const availableForInclude = KEYWORDS.filter(
     (kw) =>
@@ -103,12 +148,18 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
       kw.toLowerCase().includes(excludeSearch.toLowerCase()),
   );
 
-  const activeCount = included.length + excluded.length;
+  const availableFields = FILTERABLE_FIELDS.filter(
+    (f) => !requiredFields.includes(f.value),
+  );
+
+  const fieldLabel = (value: string) =>
+    FILTERABLE_FIELDS.find((f) => f.value === value)?.label ?? value;
+
+  const activeCount = included.length + excluded.length + requiredFields.length;
 
   return (
     <div className="w-[320px] flex-shrink-0">
       <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden flex flex-col">
-        {/* Header */}
         <div className="bg-[#B89A49] px-4 py-3 flex items-center justify-between">
           <h2 className="text-white font-semibold text-sm tracking-wide">
             Keyword Filter
@@ -124,8 +175,85 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
         </div>
 
         <div>
-          {/* INCLUDE */}
-          <div className="px-4 pt-4">
+          <div className="px-4 pt-4 pb-1">
+            <div className="rounded-lg border-2 border-[#B89A49]/50 bg-[#fdf8ee] overflow-hidden">
+              <div className="px-3 pt-3 pb-2 flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#7a5c10]">
+                  Required Fields
+                </span>
+                {requiredFields.length > 0 && (
+                  <span className="text-[10px] text-[#7a5c10]/60 font-medium">
+                    ALL must be present
+                  </span>
+                )}
+              </div>
+
+              <div className="px-3 pb-3 flex flex-col gap-2">
+                {/* Active required fields */}
+                {requiredFields.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-1">
+                    {requiredFields.map((field) => (
+                      <span
+                        key={field}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-[#B89A49]/15 text-[#7a5c10] border border-[#B89A49]/30 rounded-full group cursor-default"
+                      >
+                        {fieldLabel(field)}
+                        <button
+                          onClick={() => removeRequiredField(field)}
+                          aria-label={`Remove ${fieldLabel(field)} requirement`}
+                          className="opacity-50 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {availableFields.length > 0 ? (
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedField}
+                      onChange={(e) => {
+                        setSelectedField(e.target.value);
+                      }}
+                      ref={(el) => {
+                        if (
+                          el &&
+                          availableFields.length > 0 &&
+                          !availableFields.find(
+                            (f) => f.value === selectedField,
+                          )
+                        ) {
+                          setSelectedField(availableFields[0].value);
+                        }
+                      }}
+                      className="flex-1 border border-[#B89A49]/30 rounded-md px-2.5 py-1.5 text-xs bg-white text-gray-700 focus:outline-none focus:border-[#B89A49]"
+                    >
+                      {availableFields.map((f) => (
+                        <option key={f.value} value={f.value}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={addRequiredField}
+                      className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-gray-800 text-white rounded-md hover:bg-black active:scale-95 transition-all shadow-sm"
+                      aria-label="Add required field"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-[#7a5c10]/50 italic">
+                    All fields added
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="px-4 pt-3">
             <div className="rounded-lg border-2 border-green-400 bg-green-50/30 overflow-hidden">
               <div className="px-3 pt-3 pb-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-green-700">
@@ -201,7 +329,6 @@ export default function KeywordPicker({ onFilterChange }: KeywordPickerProps) {
             </div>
           </div>
 
-          {/* EXCLUDE */}
           <div className="px-4 pt-3 pb-4">
             <div className="rounded-lg border-2 border-red-300 bg-red-50/30 overflow-hidden">
               <div className="px-3 pt-3 pb-2">

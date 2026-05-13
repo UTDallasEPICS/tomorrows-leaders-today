@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "next lint",
     "generate": "prisma generate",
-    "scrape": "node src/runScrape.js",
+    "scrape": "tsx src/runScrape.ts",
+    "cleanup": "tsx src/cleanup.ts",
+    "cleanup:preview": "tsx src/cleanup.ts --dry-run",
     "seed": "node scripts/seedGrant.js",
     "postinstall": "prisma generate"
   },
@@ -20,6 +22,7 @@
     "@prisma/client": "^5.22.0",
     "axios": "^1.13.6",
     "better-auth": "^1.3.27",
+    "better-sqlite3": "^12.9.0",
     "cheerio": "^1.2.0",
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.5",
@@ -53,6 +56,21 @@
     "postcss": "^8.5.3",
     "prisma": "^5.22.0",
     "tailwindcss": "3.4.3",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5"
-  }
+  },
+  "description": "A Next.js application for managing and tracking grant opportunities and funding information.",
+  "main": "cleargrants.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UTDallasEPICS/tomorrows-leaders-today.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/UTDallasEPICS/tomorrows-leaders-today/issues"
+  },
+  "homepage": "https://github.com/UTDallasEPICS/tomorrows-leaders-today#readme"
 }

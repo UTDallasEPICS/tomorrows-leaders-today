@@ -130,7 +130,7 @@ const Navbar = () => {
         <div className="nav-desktop" style={{ alignItems: "center", gap: 24 }}>
           {navLink("/home", "Tracker")}
           <span style={{ color: "#2a2000", fontSize: 16 }}>|</span>
-          {navLink("/history", "History")}
+          {navLink("/stats", "Statistics")}
           <span style={{ color: "#2a2000", fontSize: 16 }}>|</span>
 
           <div style={{ position: "relative" }} ref={avatarRef}>
@@ -241,8 +241,8 @@ const Navbar = () => {
           <Link href="/home" className="nav-mobile-link" style={{ padding: "14px 24px", fontFamily: "'Montserrat', sans-serif", fontSize: 15, color: isActive("/home") ? "#c9960c" : "#d4c5a0", fontWeight: isActive("/home") ? 600 : 400, textDecoration: "none", borderBottom: "1px solid #1a1400" }}>
             Tracker
           </Link>
-          <Link href="/history" className="nav-mobile-link" style={{ padding: "14px 24px", fontFamily: "'Montserrat', sans-serif", fontSize: 15, color: isActive("/history") ? "#c9960c" : "#d4c5a0", fontWeight: isActive("/history") ? 600 : 400, textDecoration: "none", borderBottom: "1px solid #1a1400" }}>
-            History
+          <Link href="/stats" className="nav-mobile-link" style={{ padding: "14px 24px", fontFamily: "'Montserrat', sans-serif", fontSize: 15, color: isActive("/stats") ? "#c9960c" : "#d4c5a0", fontWeight: isActive("/stats") ? 600 : 400, textDecoration: "none", borderBottom: "1px solid #1a1400" }}>
+            Statistics
           </Link>
           <button
             onClick={handleSignOut}

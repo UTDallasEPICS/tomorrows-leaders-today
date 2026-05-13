@@ -9,11 +9,21 @@ export default async function Homepage() {
   return (
     <>
       <Navbar />
-      <div className="p-6 bg-gray-100 min-h-screen">
-        <section className="mt-8">
-          <h1 className="text-3xl font-bold mb-4">Grant Tracker</h1>
+      <div className="bg-gray-100 min-h-screen">
+        <div className="bg-white border-b border-gray-200">
+          <div className="px-6 py-5 flex items-end gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 leading-none">
+                Grant Tracker
+              </h1>
+            </div>
+            <div className="flex-1 h-px bg-gradient-to-r from-[#B89A49]/40 to-transparent mb-1" />
+          </div>
+        </div>
+
+        <div className="px-6 py-6">
           <GrantsView />
-        </section>
+        </div>
       </div>
     </>
   );

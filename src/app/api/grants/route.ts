@@ -1,54 +1,146 @@
-import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/library/db";
 
-const prisma = new PrismaClient();
+const PAGE_SIZE = 25;
 
-// Keywords matching TLT's target audience groups
-const TARGET_KEYWORDS = [
-  'family engagement',
-  'teen',
-  'higher education',
-  'college',
-  'workforce',
-  'career',
-  'women',
-  'girls',
-  'technology',
-  'digital',
-  'leadership',
-  'mentoring',
-  'professional development',
-  'adult education',
-  'training',
-  'literacy',
-  'education',
-];
+const ALLOWED_FIELDS = new Set([
+  "applicationLink",
+  "closingDate",
+  "openingDate",
+  "agency",
+  "description",
+  "category",
+  "applicationType",
+  "awardFloor",
+  "awardCeiling",
+  "totalFundingAmount",
+]);
 
-export async function GET() {
+const ALLOWED_SORT_FIELDS = new Set([
+  "title",
+  "agency",
+  "openingDate",
+  "closingDate",
+  "opportunityNumber",
+  "awardCeiling",
+  "totalFundingAmount",
+]);
+
+function parseDate(value: string | null): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+export async function GET(req: NextRequest) {
   try {
-    const grants = await prisma.grant.findMany({
-      where: {
-        OR: TARGET_KEYWORDS.map(keyword => ({
-          title: {
-            contains: keyword,
-          },
-        })),
-      },
-      include: {
-        logs: {
-          include: { user: true },
-          orderBy: { updatedAt: "desc" },
-        },
-      },
-      orderBy: { id: "asc" },
-    });
+    const { searchParams } = req.nextUrl;
 
-    return NextResponse.json(grants);
+    const page     = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+    const search   = searchParams.get("search")?.trim() ?? "";
+    const included = searchParams.getAll("include");
+    const excluded = searchParams.getAll("exclude");
+
+    const requiredFields = searchParams
+      .getAll("requireField")
+      .filter((f) => ALLOWED_FIELDS.has(f));
+
+    // Sort params — validate against whitelist, default to closingDate asc
+    const rawSortField = searchParams.get("sortField") ?? "closingDate";
+    const rawSortDir   = searchParams.get("sortDir")   ?? "asc";
+    const sortField = ALLOWED_SORT_FIELDS.has(rawSortField) ? rawSortField : "closingDate";
+    const sortDir   = rawSortDir === "desc" ? "desc" : "asc";
+
+    // Nulls last for dates — grants with no date go to the bottom regardless of direction
+    const nullsSort = sortDir === "asc" ? "last" : "last";
+
+    const openFrom  = parseDate(searchParams.get("openFrom"));
+    const openTo    = parseDate(searchParams.get("openTo"));
+    const closeFrom = parseDate(searchParams.get("closeFrom"));
+    const closeTo   = parseDate(searchParams.get("closeTo"));
+
+    const searchFilter = search
+      ? { OR: [{ title: { contains: search } }, { agency: { contains: search } }] }
+      : undefined;
+
+    const includeFilter =
+      included.length > 0
+        ? { OR: included.map((kw) => ({ OR: [{ title: { contains: kw } }, { agency: { contains: kw } }] })) }
+        : undefined;
+
+    const excludeFilter =
+      excluded.length > 0
+        ? { NOT: { OR: excluded.map((kw) => ({ OR: [{ title: { contains: kw } }, { agency: { contains: kw } }] })) } }
+        : undefined;
+
+    const requiredFieldFilters = requiredFields.map((field) => ({
+      [field]: { not: null },
+    }));
+
+    const dateFilters: object[] = [];
+
+    if (openFrom || openTo) {
+      const [lo, hi] = openFrom && openTo && openFrom > openTo ? [openTo, openFrom] : [openFrom, openTo];
+      const condition: Record<string, unknown> = { not: null };
+      if (lo) condition.gte = lo;
+      if (hi) condition.lte = hi;
+      dateFilters.push({ openingDate: condition });
+    }
+
+    if (closeFrom || closeTo) {
+      const [lo, hi] = closeFrom && closeTo && closeFrom > closeTo ? [closeTo, closeFrom] : [closeFrom, closeTo];
+      const condition: Record<string, unknown> = { not: null };
+      if (lo) condition.gte = lo;
+      if (hi) condition.lte = hi;
+      dateFilters.push({ closingDate: condition });
+    }
+
+    const where = {
+      AND: [
+        ...(searchFilter  ? [searchFilter]  : []),
+        ...(includeFilter ? [includeFilter] : []),
+        ...(excludeFilter ? [excludeFilter] : []),
+        ...requiredFieldFilters,
+        ...dateFilters,
+      ],
+    };
+
+    const isNullableField = ["openingDate", "closingDate", "awardCeiling", "totalFundingAmount"].includes(sortField);
+
+    const orderBy = isNullableField
+      ? [
+          { [sortField]: { sort: sortDir, nulls: "last" as const } },
+          { id: "asc" as const }, // stable tiebreaker
+        ]
+      : [
+          { [sortField]: sortDir },
+          { id: "asc" as const },
+        ];
+
+    const [total, grants] = await Promise.all([
+      prisma.grant.count({ where }),
+      prisma.grant.findMany({
+        where,
+        include: {
+          logs:               { include: { user: true }, orderBy: { updatedAt: "desc" } },
+          contacts:           true,
+          assistanceListings: true,
+        },
+        orderBy,
+        skip: (page - 1) * PAGE_SIZE,
+        take: PAGE_SIZE,
+      }),
+    ]);
+
+    return NextResponse.json({
+      grants,
+      total,
+      page,
+      pageSize: PAGE_SIZE,
+      totalPages: Math.ceil(total / PAGE_SIZE),
+    });
   } catch (error) {
     console.error("Error fetching grants:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch grants." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch grants." }, { status: 500 });
   }
 }

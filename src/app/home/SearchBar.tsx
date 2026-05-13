@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Search, X } from "lucide-react";
+
+const DEBOUNCE_MS = 400;
 
 export function SearchBar({
   onSearch = () => {},
@@ -9,14 +11,22 @@ export function SearchBar({
   onSearch?: (term: string) => void;
 }) {
   const [value, setValue] = useState("");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.value);
-    onSearch(e.target.value);
-  };
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      onSearch(value);
+    }, DEBOUNCE_MS);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [value]);
 
   const handleClear = () => {
     setValue("");
+    if (timerRef.current) clearTimeout(timerRef.current);
     onSearch("");
   };
 
@@ -31,7 +41,7 @@ export function SearchBar({
           type="text"
           placeholder="Search grants by title or agency..."
           value={value}
-          onChange={handleChange}
+          onChange={(e) => setValue(e.target.value)}
           className="flex-1 bg-transparent outline-none border-none text-sm text-gray-800 placeholder:text-gray-400"
           aria-label="Search grants"
         />
@@ -41,15 +51,7 @@ export function SearchBar({
             className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
             aria-label="Clear search"
           >
-            <svg
-              className="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
+            <X className="w-4 h-4" />
           </button>
         )}
       </div>

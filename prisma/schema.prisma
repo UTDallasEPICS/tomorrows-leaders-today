@@ -32,6 +32,7 @@ model Grant {
   id                 Int       @id @default(autoincrement())
   opportunityNumber  String    @unique
   title              String
+  description        String?
   agency             String?
   openingDate        DateTime?
   closingDate        DateTime?
@@ -41,6 +42,8 @@ model Grant {
   awardFloor         Float?
   awardCeiling       Float?
   totalFundingAmount Float?
+  source             String?
+  lastSeenAt         DateTime?
 
   contacts           GrantContact[]
   assistanceListings AssistanceListing[]
@@ -133,4 +136,11 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt
 
   @@map("verification")
+}
+
+model SystemLog {
+  id        Int      @id @default(autoincrement())
+  event     String   // "scrape" | "cleanup"
+  createdAt DateTime @default(now())
+  meta      String?  // JSON string — should probably change to Json? when on Postgres
 }
