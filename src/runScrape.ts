@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { db_handler } from './library/db_handler.js';
+import { db_handler, writeSystemLog } from './library/db_handler.js';
 import { KEYWORDS } from './library/utils.js';
 
 import {
@@ -30,6 +30,7 @@ const allScrapers: Record<string, () => Promise<unknown[]>> = {
 
 async function run() {
   const grants: unknown[] = [];
+  const scrapeErrors: string[] = [];
 
   for (const [sourceName, scraperFn] of Object.entries(allScrapers)) {
     console.log(`Scraping from ${sourceName}...`);
@@ -38,7 +39,9 @@ async function run() {
       console.log(`Found ${results.length} opportunities from ${sourceName}.`);
       grants.push(...results.map(g => ({ ...(g as Record<string, unknown>), source: sourceName })));
     } catch (error) {
-      console.error(`Error scraping ${sourceName}:`, error);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`Error scraping ${sourceName}:`, msg);
+      scrapeErrors.push(`${sourceName}: ${msg}`);
     }
   }
 
@@ -56,7 +59,6 @@ async function run() {
   let totalInserted = 0, totalUpdated = 0, totalSkipped = 0, totalErrors = 0;
   const allErrorLog: unknown[] = [], allSkippedLog: unknown[] = [];
 
-  // Group grants by source so each batch uses the correct mapper
   const bySource = new Map<string, Record<string, unknown>[]>();
   for (const g of grants as Record<string, unknown>[]) {
     const src = (g.source as string) ?? "AllScrapersCombined";
@@ -77,9 +79,17 @@ async function run() {
   console.log(`Done — Inserted: ${totalInserted} | Updated: ${totalUpdated} | Skipped: ${totalSkipped} | Errors: ${totalErrors}`);
   if (allErrorLog.length > 0)   console.error("Import errors:",  allErrorLog);
   if (allSkippedLog.length > 0) console.warn("Skipped grants:", allSkippedLog);
+
+  await writeSystemLog("scrape", {
+    inserted:     totalInserted,
+    updated:      totalUpdated,
+    skipped:      totalSkipped,
+    errors:       totalErrors,
+    totalScraped: grants.length,
+    scrapeErrors,
+    sources:      Object.keys(allScrapers),
+  });
 }
 
-run().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+run()
+  .catch((e) => { console.error(e); process.exit(1); });

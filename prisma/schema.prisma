@@ -137,3 +137,10 @@ model Verification {
 
   @@map("verification")
 }
+
+model SystemLog {
+  id        Int      @id @default(autoincrement())
+  event     String   // "scrape" | "cleanup"
+  createdAt DateTime @default(now())
+  meta      String?  // JSON string — should probably change to Json? when on Postgres
+}

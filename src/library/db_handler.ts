@@ -254,7 +254,6 @@ export const SOURCE_MAPPERS: Record<string, (raw: RawGrant) => Partial<MappedGra
   "AllScrapersCombined":      mapStandard,
 };
 
-// ─── System User ──────────────────────────────────────────
 
 async function ensureSystemUser(): Promise<void> {
   await prisma.user.upsert({
@@ -461,26 +460,25 @@ export async function db_handler(
   return result;
 }
 
-// Stale Grant Cleanup
 // Deletes grants that are clearly expired or abandoned:
 //
 // 1. closingDate passed 30+ days ago → definitely expired
 // 2. No closingDate and not seen in 60+ days → probably gone
 // 3. No closingDate and openingDate was 2+ years ago → clearly stale
 // 4. Never delete if openingDate is in the future
- 
+
 export async function deleteStaleGrants(dryRun = false): Promise<number> {
   const now = new Date();
- 
+
   const closedCutoff = new Date();
   closedCutoff.setDate(closedCutoff.getDate() - 30);
- 
+
   const unseenCutoff = new Date();
   unseenCutoff.setDate(unseenCutoff.getDate() - 60);
- 
+
   const twoYearCutoff = new Date();
   twoYearCutoff.setFullYear(twoYearCutoff.getFullYear() - 2);
- 
+
   const where = {
     OR: [
       // Rule 1: closing date passed 30+ days ago (only for grants already opened)
@@ -504,7 +502,7 @@ export async function deleteStaleGrants(dryRun = false): Promise<number> {
       },
     ],
   };
- 
+
   // Always preview what will be deleted first
   const targets = await prisma.grant.findMany({
     where,
@@ -518,12 +516,12 @@ export async function deleteStaleGrants(dryRun = false): Promise<number> {
       source:            true,
     },
   });
- 
+
   if (targets.length === 0) {
     console.log("[cleanup] No stale grants found.");
     return 0;
   }
- 
+
   console.log(`[cleanup] ${dryRun ? "DRY RUN — " : ""}${targets.length} grants targeted for deletion:`);
   for (const g of targets) {
     console.log(
@@ -533,17 +531,49 @@ export async function deleteStaleGrants(dryRun = false): Promise<number> {
       `last seen: ${g.lastSeenAt?.toLocaleDateString() ?? "never"})`
     );
   }
- 
+
   if (dryRun) {
     console.log("[cleanup] Dry run complete — nothing deleted.");
     return targets.length;
   }
 
+  // Delete inside a transaction so it either fully completes or fully rolls back
   const ids = targets.map((g) => g.id);
   const { count } = await prisma.$transaction(async (tx) => {
     return tx.grant.deleteMany({ where: { id: { in: ids } } });
   });
- 
+
   console.log(`[cleanup] Deleted ${count} stale grants.`);
   return count;
+}
+
+
+// Writes a log entry for the given event and trims the table to
+// the most recent 20 entries for that event type — keeping the
+// table small without losing meaningful recent history.
+
+export async function writeSystemLog(
+  event: string,
+  meta: Record<string, unknown>,
+): Promise<void> {
+  const MAX_LOGS = 20;
+
+  await prisma.systemLog.create({ data: { event, meta: JSON.stringify(meta) } });
+
+  // Find the IDs of everything beyond the most recent MAX_LOGS for this event
+  const keep = await prisma.systemLog.findMany({
+    where:   { event },
+    orderBy: { createdAt: "desc" },
+    take:    MAX_LOGS,
+    select:  { id: true },
+  });
+
+  const keepIds = keep.map((r) => r.id);
+
+  await prisma.systemLog.deleteMany({
+    where: {
+      event,
+      id: { notIn: keepIds },
+    },
+  });
 }
