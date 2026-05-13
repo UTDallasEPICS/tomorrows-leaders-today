@@ -28,6 +28,11 @@ type ScrapeRun = {
   meta: ScrapeRunMeta | null;
 };
 
+type CleanupRun = {
+  at: string;
+  meta: CleanupMeta | null;
+};
+
 type Stats = {
   totalGrants: number;
   grantsBySource: SourceBreakdown[];
@@ -39,6 +44,7 @@ type Stats = {
   lastScrape: { at: string; meta: ScrapeRunMeta | null } | null;
   lastCleanup: { at: string; meta: CleanupMeta | null } | null;
   scrapeHistory: ScrapeRun[];
+  cleanupHistory: CleanupRun[];
 };
 
 function timeAgo(dateStr: string): string {
@@ -345,6 +351,56 @@ export default async function StatsPage() {
                           <RunBadge errors={run.meta.errors} />
                         </div>
                       </>
+                    ) : (
+                      <span className="text-xs text-gray-400 italic">
+                        No metadata
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Cleanup history */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+              <Trash2 className="w-4 h-4 text-gray-400" />
+              <h2 className="text-sm font-bold text-gray-700">
+                Recent Cleanup Runs
+              </h2>
+            </div>
+            {!s.cleanupHistory || s.cleanupHistory.length === 0 ? (
+              <p className="px-5 py-6 text-sm text-gray-400 italic">
+                No cleanup runs recorded yet.
+              </p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {s.cleanupHistory.map((run, i) => (
+                  <div
+                    key={i}
+                    className="px-5 py-3 flex items-center gap-4 flex-wrap"
+                  >
+                    <div className="flex-shrink-0 w-32">
+                      <p className="text-xs font-semibold text-gray-700">
+                        {timeAgo(run.at)}
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        {formatDate(run.at)}
+                      </p>
+                    </div>
+                    {run.meta ? (
+                      <div className="flex gap-4 text-xs">
+                        {run.meta.deleted > 0 ? (
+                          <span className="text-red-600 font-medium">
+                            {run.meta.deleted} deleted
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">
+                            nothing to delete
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-xs text-gray-400 italic">
                         No metadata

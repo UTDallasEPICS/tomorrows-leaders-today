@@ -24,6 +24,7 @@ export async function GET() {
       lastScrapeLog,
       lastCleanupLog,
       recentScrapeLogs,
+      recentCleanupLogs,
     ] = await Promise.all([
       prisma.grant.count(),
 
@@ -62,6 +63,12 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
         take: 10,
       }),
+
+      prisma.systemLog.findMany({ 
+        where: { event: "cleanup" },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      }),
     ]);
 
     return NextResponse.json({
@@ -82,6 +89,10 @@ export async function GET() {
         ? { at: lastCleanupLog.createdAt, meta: parseMeta(lastCleanupLog.meta) }
         : null,
       scrapeHistory: recentScrapeLogs.map((log) => ({
+        at:   log.createdAt,
+        meta: parseMeta(log.meta),
+      })),
+      cleanupHistory: recentCleanupLogs.map((log) => ({  // add this
         at:   log.createdAt,
         meta: parseMeta(log.meta),
       })),
