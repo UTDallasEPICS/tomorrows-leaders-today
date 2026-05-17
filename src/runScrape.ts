@@ -47,13 +47,13 @@ async function run() {
 
   console.log(`\nCollected ${grants.length} total opportunities.`);
 
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  const timestamp       = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const latestPath      = path.join(OUTPUT_DIR, 'all_grants_latest.json');
-  const timestampedPath = path.join(OUTPUT_DIR, `all_grants_${timestamp}.json`);
-  fs.writeFileSync(latestPath,      JSON.stringify(grants, null, 2));
-  fs.writeFileSync(timestampedPath, JSON.stringify(grants, null, 2));
-  console.log(`Saved to ${latestPath}`);
+  // fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  // const timestamp       = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  // const latestPath      = path.join(OUTPUT_DIR, 'all_grants_latest.json');
+  // const timestampedPath = path.join(OUTPUT_DIR, `all_grants_${timestamp}.json`);
+  // fs.writeFileSync(latestPath,      JSON.stringify(grants, null, 2));
+  // fs.writeFileSync(timestampedPath, JSON.stringify(grants, null, 2));
+  // console.log(`Saved to ${latestPath}`);
 
   console.log(`\nInserting into database...`);
   let totalInserted = 0, totalUpdated = 0, totalSkipped = 0, totalErrors = 0;

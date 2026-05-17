@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/library/db";
-
-function parseMeta<T>(raw: string | null): T | null {
-  if (!raw) return null;
-  try { return JSON.parse(raw) as T; } catch { return null; }
-}
+import { parseSystemLogMeta } from "@/library/db_handler";
 
 export async function GET() {
   try {
@@ -24,7 +20,6 @@ export async function GET() {
       lastScrapeLog,
       lastCleanupLog,
       recentScrapeLogs,
-      recentCleanupLogs,
     ] = await Promise.all([
       prisma.grant.count(),
 
@@ -63,12 +58,6 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
         take: 10,
       }),
-
-      prisma.systemLog.findMany({ 
-        where: { event: "cleanup" },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      }),
     ]);
 
     return NextResponse.json({
@@ -83,18 +72,14 @@ export async function GET() {
       noApplicationLink,
       addedThisWeek,
       lastScrape: lastScrapeLog
-        ? { at: lastScrapeLog.createdAt, meta: parseMeta(lastScrapeLog.meta) }
+        ? { at: lastScrapeLog.createdAt, meta: parseSystemLogMeta(lastScrapeLog.meta) }
         : null,
       lastCleanup: lastCleanupLog
-        ? { at: lastCleanupLog.createdAt, meta: parseMeta(lastCleanupLog.meta) }
+        ? { at: lastCleanupLog.createdAt, meta: parseSystemLogMeta(lastCleanupLog.meta) }
         : null,
       scrapeHistory: recentScrapeLogs.map((log) => ({
         at:   log.createdAt,
-        meta: parseMeta(log.meta),
-      })),
-      cleanupHistory: recentCleanupLogs.map((log) => ({  // add this
-        at:   log.createdAt,
-        meta: parseMeta(log.meta),
+        meta: parseSystemLogMeta(log.meta),
       })),
     });
   } catch (error) {

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql" // "sqlite" , "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -142,5 +142,5 @@ model SystemLog {
   id        Int      @id @default(autoincrement())
   event     String   // "scrape" | "cleanup"
   createdAt DateTime @default(now())
-  meta      String?  // JSON string — should probably change to Json? when on Postgres
+  meta      Json?  // JSON string — should probably change to Json? when on Postgres, String? for sqlite since sqlite doesn't support Json
 }

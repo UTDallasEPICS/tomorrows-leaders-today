@@ -2,6 +2,8 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Types
+
 type RawGrant = Record<string, unknown>;
 
 type MappedGrant = {
@@ -38,6 +40,8 @@ type ErrorEntry = {
   reason: string;
 };
 
+// Validation
+
 const URL_REGEX = /^https?:\/\/.+/;
 
 type ValidationResult =
@@ -72,6 +76,8 @@ function validate(mapped: Partial<MappedGrant>): ValidationResult {
 
   return { valid: true, data: mapped as MappedGrant };
 }
+
+// Parsing Helpers
 
 function parseDate(value: unknown): Date | null {
   if (!value || typeof value !== "string") return null;
@@ -133,6 +139,8 @@ function str(value: unknown): string | null {
   const s = String(value).trim();
   return s || null;
 }
+
+// Source Mappers
 
 function mapGrantsGov(raw: RawGrant): Partial<MappedGrant> {
   return {
@@ -352,7 +360,7 @@ export async function db_handler(
 
   if (valid.length === 0) return result;
 
-  // Phase 2: Lookup all 
+  // Lookup all
   // For each valid grant, determine whether it's an insert or update.
   // Lookups run outside the transaction (reads don't need to be atomic).
   //
@@ -397,55 +405,70 @@ export async function db_handler(
 
   if (ops.length === 0) return result;
 
-  // Phase 3: Write all in one transaction
+  // Write all in one transaction
   // All inserts and updates for this source execute atomically.
   // If anything fails the entire batch rolls back — no partial imports.
+  //
+  // Inserts use createMany (single batched DB call) instead of N individual
+  // create()s, which is essential for Neon/Postgres where each round-trip
+  // costs ~50ms. Updates still loop since each needs unique where + merge logic.
+  //
+  // Generous timeout: large source batches over a remote DB can take time.
+
+  const inserts = ops.filter((o) => o.op === "insert");
+  const updates = ops.filter((o) => o.op === "update");
 
   try {
     await prisma.$transaction(async (tx) => {
-      for (const op of ops) {
-        if (op.op === "insert") {
-          await tx.grant.create({
-            data: {
-              opportunityNumber:  op.data.opportunityNumber,
-              title:              op.data.title,
-              source:             source,
-              lastSeenAt:         now,
-              agency:             op.data.agency,
-              openingDate:        op.data.openingDate,
-              closingDate:        op.data.closingDate,
-              applicationType:    op.data.applicationType,
-              category:           op.data.category,
-              applicationLink:    op.data.applicationLink,
-              awardFloor:         op.data.awardFloor,
-              awardCeiling:       op.data.awardCeiling,
-              totalFundingAmount: op.data.totalFundingAmount,
-            },
-          });
-          result.inserted++;
-        } else {
-          const { data, existing } = op;
-          await tx.grant.update({
-            where: { id: op.id },
-            data: {
-              opportunityNumber:  data.opportunityNumber,
-              title:              data.title,
-              source:             source,
-              lastSeenAt:         now,
-              agency:             data.agency             ?? existing.agency,
-              openingDate:        data.openingDate        ?? existing.openingDate,
-              closingDate:        data.closingDate        ?? existing.closingDate,
-              applicationType:    data.applicationType    ?? existing.applicationType,
-              category:           data.category           ?? existing.category,
-              applicationLink:    data.applicationLink    ?? existing.applicationLink,
-              awardFloor:         data.awardFloor         ?? existing.awardFloor,
-              awardCeiling:       data.awardCeiling       ?? existing.awardCeiling,
-              totalFundingAmount: data.totalFundingAmount ?? existing.totalFundingAmount,
-            },
-          });
-          result.updated++;
-        }
+      // Batched insert
+      if (inserts.length > 0) {
+        await tx.grant.createMany({
+          data: inserts.map((op) => ({
+            opportunityNumber:  op.data.opportunityNumber,
+            title:              op.data.title,
+            source:             source,
+            lastSeenAt:         now,
+            agency:             op.data.agency             ?? null,
+            openingDate:        op.data.openingDate        ?? null,
+            closingDate:        op.data.closingDate        ?? null,
+            applicationType:    op.data.applicationType    ?? null,
+            category:           op.data.category           ?? null,
+            applicationLink:    op.data.applicationLink    ?? null,
+            awardFloor:         op.data.awardFloor         ?? null,
+            awardCeiling:       op.data.awardCeiling       ?? null,
+            totalFundingAmount: op.data.totalFundingAmount ?? null,
+          })),
+        });
+        result.inserted += inserts.length;
       }
+
+      // Loop updates — each needs unique merge logic with its existing record
+      for (const op of updates) {
+        if (op.op !== "update") continue;
+        const { data, existing } = op;
+        await tx.grant.update({
+          where: { id: op.id },
+          data: {
+            opportunityNumber:  data.opportunityNumber,
+            title:              data.title,
+            source:             source,
+            lastSeenAt:         now,
+            agency:             data.agency             ?? existing.agency,
+            openingDate:        data.openingDate        ?? existing.openingDate,
+            closingDate:        data.closingDate        ?? existing.closingDate,
+            applicationType:    data.applicationType    ?? existing.applicationType,
+            category:           data.category           ?? existing.category,
+            applicationLink:    data.applicationLink    ?? existing.applicationLink,
+            awardFloor:         data.awardFloor         ?? existing.awardFloor,
+            awardCeiling:       data.awardCeiling       ?? existing.awardCeiling,
+            totalFundingAmount: data.totalFundingAmount ?? existing.totalFundingAmount,
+          },
+        });
+        result.updated++;
+      }
+    }, {
+      maxWait: 30_000,   // wait up to 30s to acquire the transaction
+      timeout: 300_000,  // allow 5 minutes for the whole batch to complete
     });
   } catch (err) {
     // Entire batch rolled back — credit all ops as errors
@@ -460,6 +483,7 @@ export async function db_handler(
   return result;
 }
 
+//  Stale Grant Cleanup
 // Deletes grants that are clearly expired or abandoned:
 //
 // 1. closingDate passed 30+ days ago → definitely expired
@@ -547,10 +571,26 @@ export async function deleteStaleGrants(dryRun = false): Promise<number> {
   return count;
 }
 
-
+// System Log
+//
 // Writes a log entry for the given event and trims the table to
-// the most recent 20 entries for that event type — keeping the
-// table small without losing meaningful recent history.
+// the most recent 20 entries for that event type.
+//
+// Handles both SQLite (where meta is a String field) and Postgres
+// (where meta is a Json field) automatically. Detection is based
+// on the DATABASE_URL — Postgres URLs start with "postgres".
+
+const USES_NATIVE_JSON = (process.env.DATABASE_URL ?? "").startsWith("postgres");
+
+/** Parse a meta value back into a plain object, whether it was stored as JSON or stringified. */
+export function parseSystemLogMeta<T = Record<string, unknown>>(raw: unknown): T | null {
+  if (raw == null) return null;
+  if (typeof raw === "object") return raw as T;       // Postgres returned a Json object directly
+  if (typeof raw === "string") {                       // SQLite returned a stringified JSON
+    try { return JSON.parse(raw) as T; } catch { return null; }
+  }
+  return null;
+}
 
 export async function writeSystemLog(
   event: string,
@@ -558,9 +598,18 @@ export async function writeSystemLog(
 ): Promise<void> {
   const MAX_LOGS = 20;
 
-  await prisma.systemLog.create({ data: { event, meta: JSON.stringify(meta) } });
+  // Postgres: pass the object directly so the Json column stores it natively.
+  // SQLite:   stringify first since the String column can't hold an object.
+  // The `as any` is needed because Prisma's generated types match whatever the
+  // schema currently says — but we serve both shapes at runtime.
+  const storedMeta = USES_NATIVE_JSON ? meta : JSON.stringify(meta);
 
-  // Find the IDs of everything beyond the most recent MAX_LOGS for this event
+  await prisma.systemLog.create({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: { event, meta: storedMeta as any },
+  });
+
+  // Trim to the most recent MAX_LOGS for this event type
   const keep = await prisma.systemLog.findMany({
     where:   { event },
     orderBy: { createdAt: "desc" },
