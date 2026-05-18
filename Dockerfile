@@ -51,9 +51,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static     ./.next/static
 
-# Prisma needs the generated client and schema at runtime
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+# Prisma needs the generated client at runtime. Because pnpm uses a
+# nested .pnpm layout (not the flat .prisma folder npm/yarn create),
+# the safest approach is to copy the whole node_modules folder from
+# the builder stage.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 USER nextjs
