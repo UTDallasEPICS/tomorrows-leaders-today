@@ -5,20 +5,22 @@ import { magicLink } from "better-auth/plugins/magic-link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-const DATABASE_PROVIDER = "sqlite"; // "sqlite" | "cockroachdb" | "mysql" | "postgresql" | "sqlserver" | "mongodb"
+const DATABASE_PROVIDER = "postgresql"; // "sqlite" | "cockroachdb" | "mysql" | "postgresql" | "sqlserver" | "mongodb"
 
 const logo_url: string =
   "https://www.tltleaders.org/wp-content/uploads/2023/02/TLT2.png";
 
 export const auth = betterAuth({
   appName: "auth-tlt",
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  secret: process.env.BETTER_AUTH_SECRET,
   database: prismaAdapter(prisma, {
-    provider: DATABASE_PROVIDER, // Change to
+    provider: DATABASE_PROVIDER,
   }),
   plugins: [
     magicLink({
       sendMagicLink: async ({ email, url }) => {
-        const mailer = await import("nodemailer"); // can't do this at top-level b/c middleware runs in Edge, and nodemailer does not.
+        const mailer = await import("nodemailer");
         const transporter = mailer.createTransport({
           host: "smtp.gmail.com",
           port: 465,
@@ -117,19 +119,16 @@ export const auth = betterAuth({
     }),
   ],
   user: {
-    additionalFields: {}, // If any additional User fields are needed for database, add them here (https://www.better-auth.com/docs/concepts/database#extending-core-schema)
-    // Use pnpm exec @better-auth/cli generate to update schema
+    additionalFields: {},
   },
 });
 
 export const protect = async () => {
-  // Get session with betterauth API
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
   if (!session) {
-    // Bad session, redirect to login
     redirect("/login");
   }
 
