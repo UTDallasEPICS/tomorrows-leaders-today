@@ -5,6 +5,7 @@ dotenv.config();
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {},
+  output: "standalone",
 };
 
 export default nextConfig;
