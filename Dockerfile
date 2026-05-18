@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Multi-stage build for a small, production-ready Next.js image.
 
-# ─── Stage 1: install dependencies ────────────────────────────────────────
+# install dependencies
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
@@ -19,7 +19,7 @@ RUN \
     else echo "No lockfile found!" && exit 1; \
     fi
 
-# ─── Stage 2: build the app ───────────────────────────────────────────────
+# build the app
 FROM node:20-alpine AS builder
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
@@ -34,7 +34,7 @@ RUN \
     else npm run build; \
     fi
 
-# ─── Stage 3: production runtime ──────────────────────────────────────────
+# production runtime
 FROM node:20-alpine AS runner
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
