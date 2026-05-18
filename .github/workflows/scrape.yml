@@ -33,6 +33,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm exec prisma generate
 
+      - name: Install Puppeteer Chrome
+        run: pnpm exec puppeteer browsers install chrome
+
       - name: Run scraper
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
